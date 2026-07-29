@@ -257,7 +257,6 @@ watch([role, student], notifyStudentOnline)
 
       <div class="sidebar-footer compact-sidebar-footer">
         <div class="student-chip small-chip">{{ displayName }}</div>
-        <button class="btn btn-sm btn-secondary" @click="logout">{{ t('logout') }}</button>
       </div>
     </aside>
 
@@ -284,7 +283,6 @@ watch([role, student], notifyStudentOnline)
             </button>
           </div>
         </div>
-        <button class="btn btn-sm btn-secondary mobile-logout" @click="logout">{{ t('logout') }}</button>
       </header>
       <div :class="showSidebar ? 'container page page-with-sidebar' : 'container page page-auth-only'">
         <div v-if="activeLive && !isTeacher" class="card glass live-global-alert">
