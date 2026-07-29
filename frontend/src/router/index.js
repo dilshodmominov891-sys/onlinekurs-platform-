@@ -53,11 +53,17 @@ const router = createRouter({
 // Tez route guard: bo‘limdan bo‘limga o‘tganda backend javobini kutib qotib qolmasin.
 // Session App.vue ichida fon rejimida yangilanadi, bu yerda esa faqat localStorage dagi oxirgi rol bilan tez tekshiriladi.
 router.beforeEach((to) => {
+  const saved = hydrateSession()
+  const role = saved?.role || ''
+
+  if (to.name === 'admin-login' && role === 'admin') return '/admin'
+  if (to.name === 'student-auth' && role === 'student') return '/home'
+  if (to.name === 'student-auth' && role === 'teacher') return '/teacher'
+  if (to.name === 'student-auth' && role === 'admin') return '/admin'
+
   const publicNames = new Set(['student-auth', 'admin-login'])
   if (publicNames.has(to.name)) return true
 
-  const saved = hydrateSession()
-  const role = saved?.role || ''
   if (!role) return '/auth'
 
   const adminOnly = new Set(['admin-dashboard', 'admin-class', 'admin-teachers-create', 'admin-info'])
