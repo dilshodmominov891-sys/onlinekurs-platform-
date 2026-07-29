@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import brandLogo from './assets/brand-logo.svg'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { api, socketURL } from './lib'
 import { saveSession, clearSession, hydrateSession } from './sessionStore'
@@ -69,13 +70,11 @@ function setLang(next){
 function cycleLang(){
   langMenuOpen.value = !langMenuOpen.value
 }
-function cycleNextLang(){
-  const index = langOptions.findIndex(item => item.code === lang.value)
-  const next = langOptions[(index + 1) % langOptions.length]
-  setLang(next.code)
-}
 function closeLangMenu(){
   langMenuOpen.value = false
+}
+function handleDocumentClick(event){
+  if (!event.target.closest('.lang-picker')) langMenuOpen.value = false
 }
 
 
@@ -150,8 +149,8 @@ const displayName = computed(() => {
   return ((student.value?.first_name || '') + ' ' + (student.value?.last_name || '')).trim()
 })
 
-onMounted(() => { loadSession(); connectLiveSocket() })
-onBeforeUnmount(() => socket?.disconnect())
+onMounted(() => { loadSession(); connectLiveSocket(); document.addEventListener('click', handleDocumentClick) })
+onBeforeUnmount(() => { socket?.disconnect(); document.removeEventListener('click', handleDocumentClick) })
 watch(() => route.fullPath, async () => {
   mobileMenuOpen.value = false
   await loadSession()
@@ -171,14 +170,14 @@ watch([role, student], notifyStudentOnline)
     <aside v-if="showSidebar" class="sidebar glass compact-sidebar clean-sidebar" :class="{ 'mobile-open': mobileMenuOpen }">
       <div>
         <div class="logo-wrap compact-logo-wrap premium-logo-wrap">
-          <div class="logo-mark static-logo-mark">▰</div>
+          <img :src="brandLogo" alt="EduLive Pro" class="brand-logo-image" />
           <div>
             <div class="brand-title">EduLive Pro</div>
             <div class="brand-sub">{{ t('brandSub') }}</div>
           </div>
         </div>
         <div class="lang-picker sidebar-lang">
-          <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="cycleLang" @dblclick.stop.prevent="cycleNextLang">
+          <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="cycleLang">
             <span class="selected-lang">{{ currentLangOption.short }}</span>
             <span class="lang-arrow">⌄</span>
           </button>
@@ -268,11 +267,14 @@ watch([role, student], notifyStudentOnline)
           <span></span><span></span><span></span>
         </button>
         <div class="mobile-brand-block">
-          <div class="brand-title">EduLive Pro</div>
-          <div class="student-chip small-chip mobile-chip">{{ displayName }}</div>
+          <img :src="brandLogo" alt="EduLive Pro" class="mobile-brand-logo" />
+          <div>
+            <div class="brand-title">EduLive Pro</div>
+            <div class="student-chip small-chip mobile-chip">{{ displayName }}</div>
+          </div>
         </div>
         <div class="lang-picker mobile-lang">
-          <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="cycleLang" @dblclick.stop.prevent="cycleNextLang">
+          <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="cycleLang">
             <span class="selected-lang">{{ currentLangOption.short }}</span>
             <span class="lang-arrow">⌄</span>
           </button>

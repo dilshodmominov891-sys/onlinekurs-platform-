@@ -183,8 +183,15 @@ def active_students_payload():
 
 def admin_full_info_payload():
     conn = get_db()
-    monthly_students_count = conn.execute("SELECT COUNT(*) FROM students WHERE created_at >= datetime('now', '-30 day')").fetchone()[0]
-    monthly_purchases_count = conn.execute("SELECT COUNT(*) FROM unlocked_courses WHERE unlocked_at >= datetime('now', '-30 day')").fetchone()[0]
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    current_month = datetime.utcnow().strftime('%Y-%m')
+    current_year = datetime.utcnow().strftime('%Y')
+    daily_students_count = conn.execute("SELECT COUNT(*) FROM students WHERE substr(created_at, 1, 10) = ?", (today,)).fetchone()[0]
+    monthly_students_count = conn.execute("SELECT COUNT(*) FROM students WHERE substr(created_at, 1, 7) = ?", (current_month,)).fetchone()[0]
+    yearly_students_count = conn.execute("SELECT COUNT(*) FROM students WHERE substr(created_at, 1, 4) = ?", (current_year,)).fetchone()[0]
+    daily_purchases_count = conn.execute("SELECT COUNT(*) FROM unlocked_courses WHERE substr(unlocked_at, 1, 10) = ?", (today,)).fetchone()[0]
+    monthly_purchases_count = conn.execute("SELECT COUNT(*) FROM unlocked_courses WHERE substr(unlocked_at, 1, 7) = ?", (current_month,)).fetchone()[0]
+    yearly_purchases_count = conn.execute("SELECT COUNT(*) FROM unlocked_courses WHERE substr(unlocked_at, 1, 4) = ?", (current_year,)).fetchone()[0]
     purchases = conn.execute("""
         SELECT uc.id, uc.unlocked_at, s.first_name, s.last_name, s.phone, s.email, c.title as course_title, c.level, c.track, c.price
         FROM unlocked_courses uc
@@ -194,8 +201,12 @@ def admin_full_info_payload():
     """).fetchall()
     conn.close()
     return {
+        'daily_students_count': daily_students_count,
         'monthly_students_count': monthly_students_count,
+        'yearly_students_count': yearly_students_count,
+        'daily_purchases_count': daily_purchases_count,
         'monthly_purchases_count': monthly_purchases_count,
+        'yearly_purchases_count': yearly_purchases_count,
         'purchases': [dict(row) for row in purchases],
     }
 
@@ -1056,6 +1067,30 @@ def admin_export_monthly_excel():
     return excel_response('oylik_foydalanuvchilar.xls', table)
 
 
+@app.get('/api/admin/export/daily.xls')
+@admin_required
+def admin_export_daily_excel():
+    rows = list_students()
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    daily_students = [item for item in rows if (item.get('created_at') or '')[:10] == today]
+    purchases = [item for item in admin_full_info_payload().get('purchases', []) if (item.get('unlocked_at') or '')[:10] == today]
+    table1 = html_table('Kunlik o‘quvchilar', 'Bugun ro‘yxatdan o‘tgan o‘quvchilar.', ['№','Ism','Familiya','Telefon','Email','Registratsiya'], [[i+1, r.get('first_name',''), r.get('last_name',''), r.get('phone',''), r.get('email',''), r.get('created_at','')] for i,r in enumerate(daily_students)])
+    table2 = html_table('Kunlik sotuvlar', 'Bugungi kurs ochish / sotib olishlar.', ['№','O‘quvchi','Telefon','Email','Kurs','Narx','Vaqt'], [[i+1, (r.get('first_name','')+' '+r.get('last_name','')).strip(), r.get('phone',''), r.get('email',''), r.get('course_title',''), r.get('price',''), r.get('unlocked_at','')] for i,r in enumerate(purchases)])
+    return excel_response('kunlik_hisobot.xls', table1 + table2)
+
+
+@app.get('/api/admin/export/yearly.xls')
+@admin_required
+def admin_export_yearly_excel():
+    rows = list_students()
+    current_year = datetime.utcnow().strftime('%Y')
+    yearly_students = [item for item in rows if (item.get('created_at') or '')[:4] == current_year]
+    purchases = [item for item in admin_full_info_payload().get('purchases', []) if (item.get('unlocked_at') or '')[:4] == current_year]
+    table1 = html_table('Yillik o‘quvchilar', 'Joriy yilda ro‘yxatdan o‘tgan o‘quvchilar.', ['№','Ism','Familiya','Telefon','Email','Registratsiya'], [[i+1, r.get('first_name',''), r.get('last_name',''), r.get('phone',''), r.get('email',''), r.get('created_at','')] for i,r in enumerate(yearly_students)])
+    table2 = html_table('Yillik sotuvlar', 'Joriy yildagi kurs ochish / sotib olishlar.', ['№','O‘quvchi','Telefon','Email','Kurs','Daraja','Yo‘nalish','Narx','Vaqt'], [[i+1, (r.get('first_name','')+' '+r.get('last_name','')).strip(), r.get('phone',''), r.get('email',''), r.get('course_title',''), r.get('level',''), r.get('track',''), r.get('price',''), r.get('unlocked_at','')] for i,r in enumerate(purchases)])
+    return excel_response('yillik_hisobot.xls', table1 + table2)
+
+
 @app.get('/api/admin/export/purchases.xls')
 @admin_required
 def admin_export_purchases_excel():
@@ -1072,7 +1107,7 @@ def admin_export_all_info_excel():
     students = list_students()
     purchases = overview.get('purchases', [])
     table1 = html_table('Umumiy statistika', 'Sayt bo‘yicha asosiy ko‘rsatkichlar.', ['Ko‘rsatkich','Qiymat'], [
-        ['Jami o‘quvchi', overview.get('students_count',0)], ['Oxirgi 30 kun o‘quvchi', overview.get('monthly_students_count',0)], ['Jami kurs', overview.get('courses_count',0)], ['Kurs sotib olishlar', overview.get('unlocked_count',0)], ['Oxirgi 30 kun sotuv', overview.get('monthly_purchases_count',0)], ['Ustozlar', overview.get('teachers_count',0)], ['Test natijalari', overview.get('results_count',0)]
+        ['Jami o‘quvchi', overview.get('students_count',0)], ['Kunlik o‘quvchi', overview.get('daily_students_count',0)], ['Joriy oy o‘quvchi', overview.get('monthly_students_count',0)], ['Joriy yil o‘quvchi', overview.get('yearly_students_count',0)], ['Jami kurs', overview.get('courses_count',0)], ['Kurs sotib olishlar', overview.get('unlocked_count',0)], ['Kunlik sotuv', overview.get('daily_purchases_count',0)], ['Joriy oy sotuv', overview.get('monthly_purchases_count',0)], ['Joriy yil sotuv', overview.get('yearly_purchases_count',0)], ['Ustozlar', overview.get('teachers_count',0)], ['Test natijalari', overview.get('results_count',0)]
     ])
     table2 = html_table('O‘quvchilar', 'Registratsiya qilgan foydalanuvchilar.', ['№','Ism','Familiya','Telefon','Email','Login','Vaqt'], [[i+1, r.get('first_name',''), r.get('last_name',''), r.get('phone',''), r.get('email',''), r.get('username',''), r.get('created_at','')] for i,r in enumerate(students)])
     table3 = html_table('Kurs sotib olishlar', 'Ochilgan pullik kurslar.', ['№','O‘quvchi','Kurs','Daraja','Narx','Vaqt'], [[i+1, (r.get('first_name','')+' '+r.get('last_name','')).strip(), r.get('course_title',''), r.get('level',''), r.get('price',''), r.get('unlocked_at','')] for i,r in enumerate(purchases)])

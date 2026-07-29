@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { api, socketURL, apiUrl } from '../lib'
 import { io } from 'socket.io-client'
 import ClassCard from '../components/ClassCard.vue'
+import analyticsHero from '../assets/analytics-hero.svg'
 
 const router = useRouter()
 const classes = ref([])
@@ -156,15 +157,23 @@ onBeforeUnmount(() => {
         <button class="btn btn-secondary btn-sm" @click="logout">Chiqish</button>
       </div>
 
-      <div class="admin-live-hero">
+      <div class="admin-live-hero admin-live-hero-rich">
         <div>
           <span class="pill admin-kicker">Real vaqt nazorati</span>
           <h3>Platformadagi o‘quvchilar soni avtomatik yangilanadi</h3>
           <p class="muted">O‘quvchi saytga kirsa son oshadi, chiqib ketsa shu zahoti kamayadi.</p>
+          <div class="row wrap gap-sm admin-hero-tags">
+            <span class="pill">👥 {{ overview.students_count }} o‘quvchi</span>
+            <span class="pill">🧑‍🏫 {{ overview.teachers_count }} ustoz</span>
+            <span class="pill">📚 {{ overview.courses_count }} kurs</span>
+          </div>
         </div>
-        <div class="online-orb">
-          <strong>{{ overview.active_students_count || 0 }}</strong>
-          <span>hozir online</span>
+        <div class="admin-live-hero-visual">
+          <img :src="analyticsHero" alt="Admin analytics" class="hero-dashboard-image" />
+          <div class="online-orb">
+            <strong>{{ overview.active_students_count || 0 }}</strong>
+            <span>hozir online</span>
+          </div>
         </div>
       </div>
 
