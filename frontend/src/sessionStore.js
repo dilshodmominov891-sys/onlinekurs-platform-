@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
 const STORAGE_KEY = 'edulive_session_v2'
+const RUNTIME_KEY = 'edulive_runtime_login_v1'
 
 export const sessionRole = ref('')
 export const sessionUser = ref(null)
@@ -18,6 +19,14 @@ export function readSavedSession() {
   } catch {
     return null
   }
+}
+
+export function markRuntimeSession() {
+  try { sessionStorage.setItem(RUNTIME_KEY, '1') } catch {}
+}
+
+export function hasRuntimeSession() {
+  try { return sessionStorage.getItem(RUNTIME_KEY) === '1' } catch { return false }
 }
 
 export function saveSession(data = {}) {
@@ -38,6 +47,7 @@ export function clearSession() {
   sessionRole.value = ''
   sessionUser.value = null
   try { localStorage.removeItem(STORAGE_KEY) } catch {}
+  try { sessionStorage.removeItem(RUNTIME_KEY) } catch {}
   emitSessionChange({ role: '', student: null, teacher: null })
 }
 

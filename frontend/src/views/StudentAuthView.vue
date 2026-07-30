@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../lib'
-import { saveSession } from '../sessionStore'
+import { markRuntimeSession, saveSession } from '../sessionStore'
 
 const router = useRouter()
 const form = reactive({ username: '', password: '' })
@@ -52,6 +52,7 @@ async function submitLogin() {
   try {
     const { data } = await api.post('/access/login', form)
     saveSession(data)
+    markRuntimeSession()
     form.password = ''
     if (data.role === 'admin') await router.replace('/admin')
     else if (data.role === 'teacher') await router.replace('/teacher')

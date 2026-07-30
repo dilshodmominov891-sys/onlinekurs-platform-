@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { hydrateSession } from '../sessionStore'
+import { hasRuntimeSession, hydrateSession } from '../sessionStore'
 import HomeView from '../views/HomeView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import AdminClassView from '../views/AdminClassView.vue'
@@ -53,26 +53,26 @@ const router = createRouter({
 // Tez route guard: bo‘limdan bo‘limga o‘tganda backend javobini kutib qotib qolmasin.
 // Session App.vue ichida fon rejimida yangilanadi, bu yerda esa faqat localStorage dagi oxirgi rol bilan tez tekshiriladi.
 router.beforeEach((to) => {
+  // Login sahifasi doim ochiq turadi. Sayt yangi tab/yangi sessiyada
+  // ochilganda avval login-parol so‘raladi, eski panel avtomatik chiqmaydi.
+  if (to.name === 'student-auth') return true
+
+  if (!hasRuntimeSession()) return '/auth'
+
   const saved = hydrateSession()
   const role = saved?.role || ''
-
-  if (to.name === 'student-auth' && role === 'student') return '/home'
-  if (to.name === 'student-auth' && role === 'teacher') return '/teacher'
-  if (to.name === 'student-auth' && role === 'admin') return '/admin'
-
-  const publicNames = new Set(['student-auth'])
-  if (publicNames.has(to.name)) return true
-
   if (!role) return '/auth'
 
   const adminOnly = new Set(['admin-dashboard', 'admin-class', 'admin-teachers-create', 'admin-info', 'teacher-teachers'])
   if (adminOnly.has(to.name) || String(to.path).startsWith('/admin')) {
     return role === 'admin' ? true : '/teacher'
   }
+
   const teacherOnly = new Set(['teacher', 'teacher-courses', 'teacher-tests', 'live', 'results-board', 'admin-students'])
   if (teacherOnly.has(to.name)) {
     return (role === 'teacher' || role === 'admin') ? true : '/home'
   }
+
   return true
 })
 

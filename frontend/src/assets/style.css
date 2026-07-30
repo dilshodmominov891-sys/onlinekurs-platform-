@@ -4037,3 +4037,226 @@ label > span { display: block; margin-bottom: 7px; font-size: 14px; font-weight:
   .simple-lang-menu { left: 0 !important; right: auto !important; }
   h1 { font-size: 26px !important; }
 }
+
+/* =========================================================
+   LAYOUT + LOGIN FLOW FIX — no overlap, no clipped content
+   ========================================================= */
+html, body, #app {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.layout-shell.simple-layout {
+  display: grid !important;
+  grid-template-columns: 260px minmax(0, 1fr) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  background: #f7f8fa !important;
+}
+
+.layout-shell.simple-layout > .simple-sidebar {
+  grid-column: 1 !important;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  z-index: 30 !important;
+  box-sizing: border-box !important;
+  box-shadow: 8px 0 24px rgba(16, 24, 40, .035) !important;
+}
+
+.layout-shell.simple-layout > .main-shell {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 24px !important;
+  overflow-x: clip !important;
+  background: #f7f8fa !important;
+  box-sizing: border-box !important;
+}
+
+.page-with-sidebar.container {
+  width: 100% !important;
+  max-width: 1400px !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  padding: 30px 0 54px !important;
+  box-sizing: border-box !important;
+}
+
+.page-with-sidebar > *,
+.page-with-sidebar .section,
+.page-with-sidebar .card,
+.page-with-sidebar form,
+.page-with-sidebar fieldset,
+.page-with-sidebar .simple-list,
+.page-with-sidebar .simple-list-item,
+.page-with-sidebar .section-head,
+.page-with-sidebar .form-grid-2,
+.page-with-sidebar .course-check-list {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.simple-page-head {
+  padding: 4px 2px 12px !important;
+}
+.simple-page-head h1 {
+  overflow-wrap: anywhere !important;
+}
+.simple-page-head p {
+  max-width: 820px !important;
+}
+
+.card.simple-card {
+  border-radius: 18px !important;
+  border-color: #e0e4ea !important;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, .045) !important;
+}
+
+.form-grid-2,
+.course-check-list,
+.simple-menu-grid,
+.simple-stat-grid,
+.simple-course-grid {
+  min-width: 0 !important;
+}
+.form-grid-2 > *,
+.course-check-list > *,
+.simple-menu-grid > *,
+.simple-stat-grid > *,
+.simple-course-grid > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.form-grid-2 input,
+.form-grid-2 textarea,
+.form-grid-2 select,
+.edit-student-form input,
+.edit-student-form textarea,
+.edit-student-form select {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.course-check-list {
+  overflow: hidden !important;
+}
+.check-row {
+  min-width: 0 !important;
+  align-items: flex-start !important;
+}
+.check-row span,
+.student-course-text,
+.student-main-info,
+.simple-list-item,
+.simple-menu-card span,
+.simple-menu-card strong {
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.section-head,
+.simple-section-head,
+.compact-row,
+.simple-course-card-top,
+.simple-info-row {
+  flex-wrap: wrap !important;
+}
+
+.simple-sidebar-nav {
+  overscroll-behavior: contain !important;
+}
+.simple-sidebar .side-link {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.login-page {
+  background: #f7f8fa !important;
+}
+.login-card {
+  background: #ffffff !important;
+  box-shadow: 0 18px 50px rgba(16, 24, 40, .08) !important;
+  border-color: #e0e4ea !important;
+}
+.login-submit {
+  transition: background .15s ease !important;
+}
+
+@media (max-width: 1280px) {
+  .layout-shell.simple-layout {
+    grid-template-columns: 230px minmax(0, 1fr) !important;
+  }
+  .layout-shell.simple-layout > .simple-sidebar {
+    width: 230px !important;
+    min-width: 230px !important;
+    max-width: 230px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .layout-shell.simple-layout > .main-shell {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .layout-shell.simple-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+  .layout-shell.simple-layout > .main-shell {
+    grid-column: 1 !important;
+    padding: 0 14px !important;
+    overflow-x: hidden !important;
+  }
+  .layout-shell.simple-layout > .simple-sidebar {
+    width: min(86vw, 320px) !important;
+    min-width: 0 !important;
+    max-width: 320px !important;
+  }
+  .page-with-sidebar.container {
+    padding: 22px 0 40px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .form-grid-2,
+  .course-check-list,
+  .simple-menu-grid,
+  .simple-stat-grid,
+  .simple-course-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .layout-shell.simple-layout > .main-shell {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .card.simple-card {
+    padding: 17px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .layout-shell.simple-layout > .main-shell {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+  .page-with-sidebar.container {
+    padding-top: 16px !important;
+  }
+  .card.simple-card {
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+  h1 {
+    font-size: 25px !important;
+  }
+}
