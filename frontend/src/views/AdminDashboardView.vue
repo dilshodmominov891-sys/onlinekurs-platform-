@@ -25,7 +25,7 @@ async function load() {
   try {
     const sessionRes = await api.get('/admin/session')
     if (!sessionRes.data.is_admin) {
-      router.push('/auth')
+      router.push('/admin/login')
       return
     }
     const [classesRes, resultsRes, coursesRes, teachersRes, overviewRes] = await Promise.all([
@@ -42,7 +42,7 @@ async function load() {
     overview.value = overviewRes.data || overview.value
     if (!lessonForm.course_id && courses.value.length) lessonForm.course_id = String(courses.value[0].id)
   } catch {
-    router.push('/auth')
+    router.push('/admin/login')
   }
 }
 

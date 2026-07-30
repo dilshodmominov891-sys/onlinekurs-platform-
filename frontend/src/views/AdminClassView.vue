@@ -77,7 +77,7 @@ async function load() {
     if (!saveForm.title) saveForm.title = `${data.class.title} live yozuvi`
     connectSocket()
   } catch {
-    router.push('/auth')
+    router.push('/admin/login')
   }
 }
 

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import brandLogo from './assets/brand-logo.svg'
-import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { api, socketURL } from './lib'
 import { saveSession, clearSession, hydrateSession } from './sessionStore'
 import { io } from 'socket.io-client'
@@ -15,7 +15,6 @@ const mobileMenuOpen = ref(false)
 const langMenuOpen = ref(false)
 let socket
 const route = useRoute()
-const router = useRouter()
 
 const lang = ref('uz')
 const translations = {
@@ -131,17 +130,14 @@ function notifyStudentOnline() {
   }
 }
 
-function logout() {
-  // UI darhol chiqadi; server sessiyasini tozalash fon rejimida davom etadi.
-  api.post('/student/logout').catch(() => {})
+async function logout() {
+  await api.post('/student/logout').catch(() => {})
   clearSession()
   student.value = null
   teacher.value = null
   role.value = null
-  activeLive.value = null
   loadRoleLang(null)
-  mobileMenuOpen.value = false
-  router.replace('/auth')
+  window.location.href = '/auth'
 }
 
 const showSidebar = computed(() => !!role.value && route.name !== 'student-auth' && route.name !== 'admin-login')
@@ -155,11 +151,9 @@ const displayName = computed(() => {
 
 onMounted(() => { loadSession(); connectLiveSocket(); document.addEventListener('click', handleDocumentClick) })
 onBeforeUnmount(() => { socket?.disconnect(); document.removeEventListener('click', handleDocumentClick) })
-watch(() => route.fullPath, () => {
-  // Har bir bo‘lim almashganda backend sessiyasini qayta so‘ramaymiz.
-  // Bu menyular orasidagi o‘tishni darhol qiladi.
+watch(() => route.fullPath, async () => {
   mobileMenuOpen.value = false
-  closeLangMenu()
+  await loadSession()
 }, { immediate: false })
 watch(role, (newRole) => {
   document.body.dataset.eduliveRole = newRole || 'auth'
@@ -263,7 +257,6 @@ watch([role, student], notifyStudentOnline)
 
       <div class="sidebar-footer compact-sidebar-footer">
         <div class="student-chip small-chip">{{ displayName }}</div>
-        <button class="btn btn-sm btn-secondary sidebar-logout-btn" type="button" @click="logout">{{ t('logout') }}</button>
       </div>
     </aside>
 
@@ -290,7 +283,6 @@ watch([role, student], notifyStudentOnline)
             </button>
           </div>
         </div>
-        <button class="btn btn-sm btn-secondary mobile-logout" type="button" @click="logout">{{ t('logout') }}</button>
       </header>
       <div :class="showSidebar ? 'container page page-with-sidebar' : 'container page page-auth-only'">
         <div v-if="activeLive && !isTeacher" class="card glass live-global-alert">
@@ -298,7 +290,7 @@ watch([role, student], notifyStudentOnline)
           <RouterLink class="btn btn-warning" :to="`/room/${activeLive.room_code}`">{{ t('joinLive') }}</RouterLink>
         </div>
         <RouterView v-slot="{ Component }">
-          <component :is="Component" />
+          <component :is="Component" :key="route.fullPath" />
         </RouterView>
       </div>
     </main>
