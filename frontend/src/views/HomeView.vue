@@ -14,6 +14,10 @@ const liveStats = ref({ week_count: 0, month_count: 0, total_count: 0, recent: [
 const teacherError = ref('')
 const telegramLink = 'https://t.me/mominov9969'
 
+let loadPromise = null
+let lastLoadedAt = 0
+const CACHE_MS = 30000
+
 const fallbackCourses = [
   { id: 'f1', slug: 'frontend-html-css', title: 'HTML & CSS Boshlang‘ich', track: 'frontend', technology: 'HTML & CSS', description: 'Frontend asoslari, layout, responsive dizayn va amaliy mashqlar.', duration: '4 hafta', level: '1-bosqich', price: 199000, is_unlocked: 0, is_live_class: 0 },
   { id: 'f2', slug: 'frontend-js', title: 'JavaScript Praktikum', track: 'frontend', technology: 'JavaScript', description: 'DOM, event, fetch, mini loyiha va real amaliyot.', duration: '6 hafta', level: '2-bosqich', price: 239000, is_unlocked: 0, is_live_class: 0 },
@@ -31,7 +35,11 @@ function normalizeCourse(item) {
   }
 }
 
-async function load() {
+async function load(force = false) {
+  if (loadPromise) return loadPromise
+  if (!force && courses.value.length && Date.now() - lastLoadedAt < CACHE_MS) return
+
+  loadPromise = (async () => {
   teacherError.value = ''
   try {
     const sessionRes = await api.get('/student/session')
@@ -61,6 +69,14 @@ async function load() {
     } catch (err) {
       teacherError.value = err.response?.data?.error || 'Statistika yuklanmadi.'
     }
+  }
+    lastLoadedAt = Date.now()
+  })()
+
+  try {
+    await loadPromise
+  } finally {
+    loadPromise = null
   }
 }
 

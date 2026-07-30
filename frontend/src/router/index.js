@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { hydrateSession } from '../sessionStore'
 import HomeView from '../views/HomeView.vue'
-import AdminLoginView from '../views/AdminLoginView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import AdminClassView from '../views/AdminClassView.vue'
 import StudentRoomView from '../views/StudentRoomView.vue'
@@ -39,7 +38,7 @@ const router = createRouter({
     { path: '/auth', name: 'student-auth', component: StudentAuthView },
     { path: '/course/:slug', name: 'course-detail', component: CourseDetailView, props: true },
     { path: '/course/:slug/lesson/:lessonId', name: 'lesson-player', component: LessonPlayerView, props: true },
-    { path: '/admin/login', name: 'admin-login', component: AdminLoginView },
+    { path: '/admin/login', redirect: '/auth' },
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboardView },
     { path: '/admin/teachers', name: 'admin-teachers-create', component: AdminTeacherCreateView },
     { path: '/admin/info', name: 'admin-info', component: AdminInfoView },
@@ -56,12 +55,11 @@ router.beforeEach((to) => {
   const saved = hydrateSession()
   const role = saved?.role || ''
 
-  if (to.name === 'admin-login' && role === 'admin') return '/admin'
   if (to.name === 'student-auth' && role === 'student') return '/home'
   if (to.name === 'student-auth' && role === 'teacher') return '/teacher'
   if (to.name === 'student-auth' && role === 'admin') return '/admin'
 
-  const publicNames = new Set(['student-auth', 'admin-login'])
+  const publicNames = new Set(['student-auth'])
   if (publicNames.has(to.name)) return true
 
   if (!role) return '/auth'
