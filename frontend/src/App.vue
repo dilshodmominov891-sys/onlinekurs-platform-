@@ -14,6 +14,7 @@ const activeLive = ref(null)
 const mobileMenuOpen = ref(false)
 const langMenuOpen = ref(false)
 const lang = ref('uz')
+const theme = ref(localStorage.getItem('edulive_theme') || 'light')
 let socket = null
 
 const translations = {
@@ -37,6 +38,16 @@ const langOptions = [
   { code: 'ru', label: 'Русский' },
 ]
 function t(key) { return translations[lang.value]?.[key] || translations.uz[key] || key }
+
+function applyTheme(next) {
+  const value = next === 'dark' ? 'dark' : 'light'
+  theme.value = value
+  localStorage.setItem('edulive_theme', value)
+  document.documentElement.dataset.theme = value
+}
+function setTheme(next) {
+  applyTheme(next)
+}
 const currentLang = computed(() => langOptions.find(item => item.code === lang.value) || langOptions[0])
 const isAdmin = computed(() => role.value === 'admin')
 const isTeacher = computed(() => role.value === 'teacher' || role.value === 'admin')
@@ -136,6 +147,7 @@ function logout() {
 }
 
 onMounted(() => {
+  applyTheme(theme.value)
   window.addEventListener('edulive-session-change', handleSessionChange)
   document.addEventListener('click', handleDocumentClick)
   loadSession()
@@ -168,14 +180,6 @@ watch(student, () => {
           <small>{{ t('brandSub') }}</small>
         </div>
 
-        <div class="lang-picker sidebar-lang">
-          <button class="lang-toggle simple-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
-            <span>{{ currentLang.label }}</span><span class="simple-lang-chevron" aria-hidden="true"></span>
-          </button>
-          <div v-if="langMenuOpen" class="lang-menu simple-lang-menu">
-            <button v-for="item in langOptions" :key="item.code" class="lang-option simple-lang-option" :class="{ active: item.code === lang }" type="button" @click="setLang(item.code)">{{ item.label }}</button>
-          </div>
-        </div>
 
         <nav class="sidebar-nav simple-sidebar-nav">
           <RouterLink class="side-link" to="/home"><span>{{ t('home') }}</span></RouterLink>
@@ -207,16 +211,46 @@ watch(student, () => {
       </div>
     </aside>
 
-    <main class="main-shell">
+    <main :class="['main-shell', { 'questions-main-shell': route.name === 'questions' }]">
       <header v-if="showSidebar" class="mobile-top simple-mobile-top">
         <button class="mobile-menu-btn" type="button" @click="mobileMenuOpen = true" :aria-label="t('openMenu')">
           <span></span><span></span><span></span>
         </button>
         <strong>EduLive Pro</strong>
-        <button class="mobile-logout-simple" type="button" @click="logout">{{ t('logout') }}</button>
+        <div class="top-control-actions mobile-control-actions">
+          <div class="lang-picker top-lang-picker">
+            <button class="lang-toggle simple-lang-toggle compact-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
+              <span>{{ currentLang.label }}</span><span class="simple-lang-chevron" aria-hidden="true"></span>
+            </button>
+            <div v-if="langMenuOpen" class="lang-menu simple-lang-menu top-lang-menu">
+              <button v-for="item in langOptions" :key="item.code" class="lang-option simple-lang-option" :class="{ active: item.code === lang }" type="button" @click="setLang(item.code)">{{ item.label }}</button>
+            </div>
+          </div>
+          <div class="theme-switch" role="group" aria-label="Sayt mavzusi">
+            <button class="theme-button" :class="{ active: theme === 'light' }" type="button" aria-label="Oq rang" title="Oq rang" @click="setTheme('light')">☀</button>
+            <button class="theme-button" :class="{ active: theme === 'dark' }" type="button" aria-label="Tungi rang" title="Tungi rang" @click="setTheme('dark')">☾</button>
+          </div>
+        </div>
       </header>
 
-      <div :class="showSidebar ? 'container page page-with-sidebar' : 'page-auth-only'">
+      <header v-if="showSidebar" class="desktop-top-controls">
+        <div class="top-control-actions">
+          <div class="lang-picker top-lang-picker">
+            <button class="lang-toggle simple-lang-toggle compact-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
+              <span>{{ currentLang.label }}</span><span class="simple-lang-chevron" aria-hidden="true"></span>
+            </button>
+            <div v-if="langMenuOpen" class="lang-menu simple-lang-menu top-lang-menu">
+              <button v-for="item in langOptions" :key="item.code" class="lang-option simple-lang-option" :class="{ active: item.code === lang }" type="button" @click="setLang(item.code)">{{ item.label }}</button>
+            </div>
+          </div>
+          <div class="theme-switch" role="group" aria-label="Sayt mavzusi">
+            <button class="theme-button" :class="{ active: theme === 'light' }" type="button" aria-label="Oq rang" title="Oq rang" @click="setTheme('light')">☀</button>
+            <button class="theme-button" :class="{ active: theme === 'dark' }" type="button" aria-label="Tungi rang" title="Tungi rang" @click="setTheme('dark')">☾</button>
+          </div>
+        </div>
+      </header>
+
+      <div :class="[showSidebar ? 'container page page-with-sidebar' : 'page-auth-only', { 'questions-page-shell': route.name === 'questions' }]">
         <div v-if="activeLive && role === 'student'" class="live-global-alert simple-live-alert">
           <strong>{{ t('liveOn') }}</strong>
           <RouterLink class="btn btn-sm" :to="`/room/${activeLive.room_code}`">{{ t('joinLive') }}</RouterLink>

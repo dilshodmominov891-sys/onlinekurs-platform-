@@ -10,6 +10,7 @@ const error = ref('')
 const loading = ref(false)
 const lang = ref(localStorage.getItem('edulive_lang_auth') || 'uz')
 const langMenuOpen = ref(false)
+const theme = ref(localStorage.getItem('edulive_theme') || 'light')
 
 const langOptions = [
   { code: 'uz', short: 'UZ', label: 'O‘zbek' },
@@ -43,6 +44,12 @@ function setLang(next) {
   window.dispatchEvent(new CustomEvent('edulive-lang-change', { detail: next }))
 }
 function toggleLang() { langMenuOpen.value = !langMenuOpen.value }
+function setTheme(next) {
+  const value = next === 'dark' ? 'dark' : 'light'
+  theme.value = value
+  localStorage.setItem('edulive_theme', value)
+  document.documentElement.dataset.theme = value
+}
 function handleDocumentClick(event) {
   if (!event.target.closest('.lang-picker')) langMenuOpen.value = false
 }
@@ -53,18 +60,23 @@ async function submitLogin() {
     const { data } = await api.post('/access/login', form)
     saveSession(data)
     markRuntimeSession()
+    form.username = ''
     form.password = ''
     if (data.role === 'admin') await router.replace('/admin')
     else if (data.role === 'teacher') await router.replace('/teacher')
     else await router.replace('/home')
   } catch (err) {
+    form.password = ''
     error.value = err.response?.data?.error || tr('error')
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => document.addEventListener('click', handleDocumentClick))
+onMounted(() => {
+  setTheme(theme.value)
+  document.addEventListener('click', handleDocumentClick)
+})
 onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick))
 </script>
 
@@ -73,20 +85,26 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
     <section class="login-card">
       <div class="login-card-top">
         <div class="login-brand">EduLive Pro</div>
-        <div class="lang-picker auth-lang-picker">
-          <button class="lang-toggle simple-lang-toggle" type="button" @click="toggleLang">
-            <span>{{ currentLang.label }}</span>
-            <span class="lang-arrow">⌄</span>
-          </button>
-          <div v-if="langMenuOpen" class="lang-menu simple-lang-menu">
-            <button
-              v-for="item in langOptions"
-              :key="item.code"
-              type="button"
-              class="lang-option simple-lang-option"
-              :class="{ active: item.code === lang }"
-              @click="setLang(item.code)"
-            >{{ item.label }}</button>
+        <div class="login-top-actions">
+          <div class="lang-picker auth-lang-picker">
+            <button class="lang-toggle simple-lang-toggle compact-lang-toggle" type="button" @click="toggleLang">
+              <span>{{ currentLang.label }}</span>
+              <span class="simple-lang-chevron" aria-hidden="true"></span>
+            </button>
+            <div v-if="langMenuOpen" class="lang-menu simple-lang-menu">
+              <button
+                v-for="item in langOptions"
+                :key="item.code"
+                type="button"
+                class="lang-option simple-lang-option"
+                :class="{ active: item.code === lang }"
+                @click="setLang(item.code)"
+              >{{ item.label }}</button>
+            </div>
+          </div>
+          <div class="theme-switch" role="group" aria-label="Sayt mavzusi">
+            <button class="theme-button" :class="{ active: theme === 'light' }" type="button" aria-label="Oq rang" title="Oq rang" @click="setTheme('light')">☀</button>
+            <button class="theme-button" :class="{ active: theme === 'dark' }" type="button" aria-label="Tungi rang" title="Tungi rang" @click="setTheme('dark')">☾</button>
           </div>
         </div>
       </div>
@@ -97,11 +115,11 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
       <form class="login-form" autocomplete="off" @submit.prevent="submitLogin">
         <label>
           <span>{{ tr('login') }}</span>
-          <input v-model.trim="form.username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+          <input v-model.trim="form.username" autocomplete="off" name="edulive_login_manual" autocapitalize="none" spellcheck="false" required />
         </label>
         <label>
           <span>{{ tr('password') }}</span>
-          <input v-model="form.password" type="password" autocomplete="current-password" required />
+          <input v-model="form.password" type="password" autocomplete="new-password" name="edulive_password_manual" required />
         </label>
         <button class="btn login-submit" :disabled="loading">{{ loading ? '...' : tr('button') }}</button>
       </form>
