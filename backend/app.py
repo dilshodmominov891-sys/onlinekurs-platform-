@@ -1262,7 +1262,7 @@ def admin_students_list():
 
 
 @app.post('/api/admin/students')
-@admin_required
+@teacher_required
 def admin_students_create():
     data = request.get_json(silent=True) or {}
     first_name = (data.get('first_name') or '').strip()

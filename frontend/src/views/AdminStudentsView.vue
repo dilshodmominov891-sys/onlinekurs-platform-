@@ -13,7 +13,7 @@ const editingId = ref(null)
 const lang = ref(localStorage.getItem('edulive_lang_admin') || localStorage.getItem('edulive_lang_teacher') || 'uz')
 const text = {
   uz: {
-    title: 'O‘quvchilar', sub: 'Admin o‘quvchiga login, parol va kerakli kurslarni beradi.',
+    title: 'O‘quvchilar', sub: 'Admin yoki ustoz o‘quvchiga login, parol va kerakli kurslarni beradi.',
     create: 'Yangi o‘quvchi yaratish', first: 'Ism', last: 'Familiya', phone: 'Telefon (ixtiyoriy)', email: 'Email (ixtiyoriy)',
     login: 'Login', password: 'Parol', courses: 'Kurslarni tanlang', save: 'O‘quvchi yaratish', list: 'O‘quvchilar ro‘yxati',
     noStudents: 'Hali o‘quvchi yaratilmagan.', edit: 'Tahrirlash', cancel: 'Bekor qilish', update: 'Saqlash', remove: 'O‘chirish',
@@ -21,7 +21,7 @@ const text = {
     confirmDelete: 'O‘quvchi o‘chirilsinmi?'
   },
   ru: {
-    title: 'Ученики', sub: 'Администратор выдаёт ученику логин, пароль и открывает нужные курсы.',
+    title: 'Ученики', sub: 'Администратор или учитель создаёт ученику логин, пароль и открывает нужные курсы.',
     create: 'Создать ученика', first: 'Имя', last: 'Фамилия', phone: 'Телефон (необязательно)', email: 'Email (необязательно)',
     login: 'Логин', password: 'Пароль', courses: 'Выберите курсы', save: 'Создать ученика', list: 'Список учеников',
     noStudents: 'Ученики ещё не созданы.', edit: 'Изменить', cancel: 'Отмена', update: 'Сохранить', remove: 'Удалить',
@@ -131,7 +131,7 @@ onBeforeUnmount(() => window.removeEventListener('edulive-lang-change', handleLa
     <p class="muted">{{ tr('sub') }}</p>
   </section>
 
-  <section v-if="isAdmin" class="section card simple-card">
+  <section class="section card simple-card">
     <h2>{{ tr('create') }}</h2>
     <form class="simple-form" @submit.prevent="createStudent">
       <div class="form-grid-2">

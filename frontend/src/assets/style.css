@@ -4260,3 +4260,93 @@ html, body, #app {
     font-size: 25px !important;
   }
 }
+
+
+/* =========================================================
+   SIMPLE CONTROLS — neutral buttons and clean language arrow
+   ========================================================= */
+.btn,
+button.btn,
+a.btn,
+.track-btn,
+.seg-btn,
+.mobile-logout-simple,
+.btn-secondary,
+.btn-light,
+.btn-ghost,
+.btn-warning,
+.btn-danger,
+.btn-danger-soft,
+.btn-danger-simple {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  border: 1px solid #cfd4dc !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  text-shadow: none !important;
+}
+.btn:hover,
+button.btn:hover,
+a.btn:hover,
+.track-btn:hover,
+.seg-btn:hover,
+.mobile-logout-simple:hover,
+.btn-secondary:hover,
+.btn-light:hover,
+.btn-ghost:hover,
+.btn-warning:hover,
+.btn-danger:hover,
+.btn-danger-soft:hover,
+.btn-danger-simple:hover {
+  background: #f2f4f7 !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  border-color: #b9c0ca !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.track-btn.active,
+.seg-btn.active,
+.router-link-active.btn {
+  background: #eaecf0 !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  border-color: #98a2b3 !important;
+}
+.btn::after,
+button.btn::after,
+a.btn::after { display: none !important; }
+
+.simple-lang-toggle {
+  justify-content: space-between !important;
+  gap: 14px !important;
+}
+.simple-lang-chevron {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  flex: 0 0 auto;
+  border-right: 1.8px solid #344054;
+  border-bottom: 1.8px solid #344054;
+  transform: rotate(45deg) translateY(-2px);
+  transform-origin: center;
+}
+.lang-picker:has(.simple-lang-menu) .simple-lang-chevron {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+/* Teacher and admin use the same clear student creation form. */
+.simple-form > .btn {
+  justify-self: start;
+  min-width: 180px;
+  padding-inline: 20px !important;
+}
+@media (max-width: 520px) {
+  .simple-form > .btn {
+    width: 100% !important;
+    justify-self: stretch;
+  }
+}

@@ -170,7 +170,7 @@ watch(student, () => {
 
         <div class="lang-picker sidebar-lang">
           <button class="lang-toggle simple-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
-            <span>{{ currentLang.label }}</span><span>⌄</span>
+            <span>{{ currentLang.label }}</span><span class="simple-lang-chevron" aria-hidden="true"></span>
           </button>
           <div v-if="langMenuOpen" class="lang-menu simple-lang-menu">
             <button v-for="item in langOptions" :key="item.code" class="lang-option simple-lang-option" :class="{ active: item.code === lang }" type="button" @click="setLang(item.code)">{{ item.label }}</button>

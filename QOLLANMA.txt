@@ -1,4 +1,3 @@
-1. ZIP faylni arxivdan chiqaring.
-2. Ichidagi frontend papkasini GitHub'dan clone qilingan loyiha papkasi ustiga ko'chiring.
-3. Replace files / Заменить файлы ni bosing.
-4. Keyin git status, git add ., git commit va git push qiling.
+1. Ushbu patch ichidagi backend va frontend papkalarini GitHub clone qilingan loyiha ustiga ko‘chiring.
+2. Windows so‘rasa Replace files / Заменить файлы ni bosing.
+3. Keyin git add, commit va push qiling.
