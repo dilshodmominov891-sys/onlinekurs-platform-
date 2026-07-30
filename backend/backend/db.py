@@ -529,6 +529,108 @@ def list_students():
     return [dict(row) for row in rows]
 
 
+def list_students_with_courses():
+    conn = get_db()
+    student_rows = conn.execute('''
+        SELECT id, first_name, last_name, phone, email, username, created_at
+        FROM students
+        ORDER BY id DESC
+    ''').fetchall()
+    course_rows = conn.execute('''
+        SELECT uc.student_id, c.id AS course_id, c.title AS course_title
+        FROM unlocked_courses uc
+        JOIN courses c ON c.id = uc.course_id
+        ORDER BY c.title
+    ''').fetchall()
+    conn.close()
+
+    course_map = {}
+    for row in course_rows:
+        item = dict(row)
+        course_map.setdefault(item['student_id'], []).append({
+            'id': item['course_id'],
+            'title': item['course_title'],
+        })
+
+    students = []
+    for row in student_rows:
+        item = dict(row)
+        item['courses'] = course_map.get(item['id'], [])
+        item['course_ids'] = [course['id'] for course in item['courses']]
+        students.append(item)
+    return students
+
+
+def set_student_courses(student_id, course_ids):
+    conn = get_db()
+    student = conn.execute('SELECT id FROM students WHERE id = ?', (student_id,)).fetchone()
+    if not student:
+        conn.close()
+        return None
+
+    conn.execute('DELETE FROM unlocked_courses WHERE student_id = ?', (student_id,))
+    now = datetime.utcnow().isoformat()
+    normalized = []
+    for course_id in course_ids or []:
+        try:
+            value = int(course_id)
+        except (TypeError, ValueError):
+            continue
+        if value not in normalized:
+            normalized.append(value)
+            conn.execute(
+                'INSERT OR IGNORE INTO unlocked_courses (student_id, course_id, unlocked_at) VALUES (?, ?, ?)',
+                (student_id, value, now),
+            )
+    conn.commit()
+    conn.close()
+    return normalized
+
+
+def update_student_account(student_id, first_name, last_name, phone, email, username, password_hash=None):
+    conn = get_db()
+    row = conn.execute('SELECT * FROM students WHERE id = ?', (student_id,)).fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    if password_hash:
+        conn.execute('''
+            UPDATE students
+            SET first_name = ?, last_name = ?, phone = ?, email = ?, username = ?, password = ?
+            WHERE id = ?
+        ''', (first_name, last_name, phone, email, username, password_hash, student_id))
+    else:
+        conn.execute('''
+            UPDATE students
+            SET first_name = ?, last_name = ?, phone = ?, email = ?, username = ?
+            WHERE id = ?
+        ''', (first_name, last_name, phone, email, username, student_id))
+    conn.commit()
+    updated = conn.execute('''
+        SELECT id, first_name, last_name, phone, email, username, created_at
+        FROM students WHERE id = ?
+    ''', (student_id,)).fetchone()
+    conn.close()
+    return dict(updated) if updated else None
+
+
+def delete_student(student_id):
+    conn = get_db()
+    row = conn.execute('''
+        SELECT id, first_name, last_name, phone, email, username, created_at
+        FROM students WHERE id = ?
+    ''', (student_id,)).fetchone()
+    if not row:
+        conn.close()
+        return None
+    conn.execute('DELETE FROM unlocked_courses WHERE student_id = ?', (student_id,))
+    conn.execute('DELETE FROM students WHERE id = ?', (student_id,))
+    conn.commit()
+    conn.close()
+    return dict(row)
+
+
 def auth_student(username, password):
     conn = get_db()
     row = conn.execute(
@@ -768,9 +870,12 @@ def create_course(title, track, technology, description='', duration='', level='
 
 def create_teacher(full_name, username, password):
     conn = get_db()
+    stored_password = str(password or '')
+    if not stored_password.startswith(('scrypt:', 'pbkdf2:')):
+        stored_password = generate_password_hash(stored_password)
     conn.execute(
         'INSERT INTO teachers (full_name, username, password, created_at) VALUES (?, ?, ?, ?)',
-        (full_name, username.strip().lower(), password, datetime.utcnow().isoformat())
+        (full_name, username.strip().lower(), stored_password, datetime.utcnow().isoformat())
     )
     conn.commit()
     teacher_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
@@ -789,11 +894,21 @@ def list_teachers():
 def auth_teacher(username, password):
     conn = get_db()
     row = conn.execute(
-        'SELECT * FROM teachers WHERE LOWER(username) = LOWER(?) AND password = ? LIMIT 1',
-        (username.strip().lower(), password)
+        'SELECT * FROM teachers WHERE LOWER(username) = LOWER(?) LIMIT 1',
+        (username.strip().lower(),)
     ).fetchone()
+    if not row:
+        conn.close()
+        return None
+    teacher = row_to_dict(row)
+    stored_password = str(teacher.get('password') or '')
+    is_hashed = stored_password.startswith(('scrypt:', 'pbkdf2:'))
+    valid = check_password_hash(stored_password, password) if is_hashed else stored_password == password
+    if valid and not is_hashed:
+        conn.execute('UPDATE teachers SET password = ? WHERE id = ?', (generate_password_hash(password), teacher['id']))
+        conn.commit()
     conn.close()
-    return row_to_dict(row)
+    return teacher if valid else None
 
 
 def get_teacher_by_id(teacher_id):

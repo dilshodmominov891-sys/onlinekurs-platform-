@@ -1,130 +1,91 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { api } from '../lib'
 
 const route = useRoute()
 const router = useRouter()
-const slug = computed(() => route.params.slug)
 const course = ref(null)
 const linkedClass = ref(null)
 const latestTest = ref(null)
 const student = ref(null)
-const unlockForm = reactive({ purchase_password: '' })
-const telegramLink = 'https://t.me/mominov9969'
-const message = ref('')
 const error = ref('')
-const firstLesson = computed(() => (course.value?.lessons || [])[0] || null)
-const hasSavedVideo = computed(() => Boolean(course.value?.is_unlocked && firstLesson.value?.video_url))
+const lang = ref(localStorage.getItem('edulive_lang_student') || 'uz')
 
+const text = {
+  uz: {
+    duration: 'Davomiyligi', level: 'Bosqich', accessOpen: 'Kurs sizga ochilgan.', accessClosed: 'Bu kurs sizga hali ochilmagan.',
+    accessHelp: 'Kursni admin o‘quvchi akkauntingizga biriktiradi.', live: 'Live darsga kirish', test: 'Test ishlash', recording: 'Dars yozuvini ko‘rish',
+    lessons: 'Darslar', noLessons: 'Hali dars qo‘shilmagan.', view: 'Ko‘rish', locked: 'Yopiq'
+  },
+  ru: {
+    duration: 'Продолжительность', level: 'Уровень', accessOpen: 'Курс открыт для вас.', accessClosed: 'Этот курс вам пока не открыт.',
+    accessHelp: 'Администратор назначает курс вашему аккаунту.', live: 'Войти на live урок', test: 'Пройти тест', recording: 'Смотреть запись урока',
+    lessons: 'Уроки', noLessons: 'Уроки ещё не добавлены.', view: 'Открыть', locked: 'Закрыто'
+  }
+}
+function tr(key) { return text[lang.value]?.[key] || text.uz[key] || key }
+const firstLesson = computed(() => course.value?.lessons?.[0] || null)
+const hasSavedVideo = computed(() => Boolean(course.value?.is_unlocked && firstLesson.value?.video_url))
+function handleLang(event) { lang.value = ['uz', 'ru'].includes(event.detail) ? event.detail : 'uz' }
 async function load() {
   try {
     const sessionRes = await api.get('/student/session')
     student.value = sessionRes.data.student
-  } catch {
-    student.value = null
-    router.replace('/auth')
-    return
-  }
-  try {
-    const { data } = await api.get(`/courses/${slug.value}`)
+    if (!student.value) {
+      router.replace('/auth')
+      return
+    }
+    const { data } = await api.get(`/courses/${route.params.slug}`)
     course.value = data.course
     linkedClass.value = data.class
     latestTest.value = data.latest_test
-  } catch {
-    router.push('/')
-  }
-}
-
-async function unlockCourse() {
-  error.value = ''
-  message.value = ''
-  try {
-    const { data } = await api.post(`/courses/${slug.value}/unlock`, unlockForm)
-    course.value = data.course
-    message.value = data.message
-    unlockForm.purchase_password = ''
   } catch (err) {
-    if (err.response?.status === 401 && !student.value) {
-      router.push('/auth')
-      return
-    }
-    error.value = err.response?.data?.error || 'Kurs ochilmadi.'
+    error.value = err.response?.data?.error || 'Kurs yuklanmadi.'
   }
 }
-
-onMounted(load)
+onMounted(() => {
+  window.addEventListener('edulive-lang-change', handleLang)
+  load()
+})
+onBeforeUnmount(() => window.removeEventListener('edulive-lang-change', handleLang))
 </script>
 
 <template>
-  <div v-if="course" class="stack section">
-    <section class="card glass course-hero-detail">
-      <div class="badge">{{ course.track.toUpperCase() }} · {{ course.technology }}</div>
+  <section v-if="course" class="section simple-course-detail">
+    <div class="simple-page-head">
       <h1>{{ course.title }}</h1>
-      <p class="lead">{{ course.description }}</p>
-      <div class="info-grid">
-        <div class="mini-card"><strong>Davomiyligi</strong><br>{{ course.duration }}</div>
-        <div class="mini-card"><strong>Bosqich</strong><br>{{ course.level }}</div>
-        <div class="mini-card"><strong>Narxi</strong><br>{{ Number(course.price).toLocaleString() }} so‘m</div>
-      </div>
+      <p class="muted">{{ course.description }}</p>
+    </div>
 
-      <div v-if="course.is_unlocked" class="flash success">
-        Kurs ochilgan. Video darsliklar, live dars va testlar endi sizga ochiq.
-      </div>
-      <div v-else class="lock-panel">
-        <div class="lock-icon big">🔒</div>
-        <div>
-          <strong>Sotib olish bilan ochiladi</strong>
-          <p class="muted">Kirish ma’lumoti ko‘rinmaydi. Uni Telegram orqali olib, shu yerga o‘zingiz kiriting.</p>
+    <div class="card simple-card course-summary-card">
+      <div class="simple-info-row"><strong>{{ tr('duration') }}</strong><span>{{ course.duration || '—' }}</span></div>
+      <div class="simple-info-row"><strong>{{ tr('level') }}</strong><span>{{ course.level || '—' }}</span></div>
+    </div>
+
+    <div v-if="course.is_unlocked" class="flash success">{{ tr('accessOpen') }}</div>
+    <div v-else class="card simple-card locked-course-note">
+      <strong>{{ tr('accessClosed') }}</strong>
+      <p class="muted">{{ tr('accessHelp') }}</p>
+    </div>
+
+    <div v-if="course.is_unlocked" class="simple-action-grid section">
+      <RouterLink v-if="linkedClass?.is_live" class="btn" :to="`/room/${linkedClass.room_code}`">{{ tr('live') }}</RouterLink>
+      <RouterLink v-if="latestTest" class="btn btn-light" :to="`/test/${latestTest.id}`">{{ tr('test') }}</RouterLink>
+      <RouterLink v-if="hasSavedVideo" class="btn btn-light" :to="`/course/${course.slug}/lesson/${firstLesson.id}`">{{ tr('recording') }}</RouterLink>
+    </div>
+
+    <div class="section card simple-card">
+      <h2>{{ tr('lessons') }}</h2>
+      <div class="simple-list">
+        <div v-for="lesson in course.lessons || []" :key="lesson.id" class="simple-list-item lesson-simple-row">
+          <div><strong>{{ lesson.order_no }}. {{ lesson.title }}</strong><p class="muted">{{ lesson.summary || '' }}</p></div>
+          <RouterLink v-if="course.is_unlocked || lesson.is_preview" class="btn btn-sm" :to="`/course/${course.slug}/lesson/${lesson.id}`">{{ tr('view') }}</RouterLink>
+          <span v-else class="plain-count">{{ tr('locked') }}</span>
         </div>
-        <a class="btn btn-secondary" :href="telegramLink" target="_blank" rel="noreferrer">@mominov9969 dan kirish ma’lumoti olish</a>
-        <input v-model="unlockForm.purchase_password" type="password" autocomplete="off" placeholder="Kirish paroli" />
-        <button class="btn" @click="unlockCourse">Kursni ochish</button>
+        <p v-if="!course.lessons?.length" class="muted">{{ tr('noLessons') }}</p>
       </div>
-
-      <div class="row gap-sm wrap">
-        <RouterLink v-if="course.is_unlocked && linkedClass && linkedClass.is_live" class="btn btn-secondary" :to="`/room/${linkedClass.room_code}?student_name=${encodeURIComponent(student ? `${student.first_name} ${student.last_name}` : 'Guest')}`">Online darsga qo‘shilish</RouterLink>
-        <RouterLink v-if="course.is_unlocked && latestTest" class="btn" :to="`/test/${latestTest.id}?student_name=${encodeURIComponent(student ? `${student.first_name} ${student.last_name}` : 'Guest')}`">Test ishlash</RouterLink>
-        <RouterLink v-if="hasSavedVideo" class="btn btn-warning" :to="`/course/${course.slug}/lesson/${firstLesson.id}`">Live yozuvni ko‘rish</RouterLink>
-      </div>
-
-      <div v-if="linkedClass?.is_live" class="flash success">Online dars hozir yoqilgan. {{ linkedClass.participants_count || 0 }} ta o‘quvchi online. Kurs ochilgandan keyin shu yerdan live darsga qo‘shilasiz.</div>
-
-      <div class="feature-grid">
-        <div class="mini-card"><strong>🎥 Online live</strong><br>Ustoz ekranini va ovozini jonli ko‘rasiz.</div>
-        <div class="mini-card"><strong>🔐 Himoyalangan video</strong><br>Video darsliklarda oldinga o‘tkazish cheklangan.</div>
-        <div class="mini-card"><strong>👀 Ustoz nazorati</strong><br>Ustoz kim kirganini ko‘rib turadi.</div>
-      </div>
-
-      <div v-if="message" class="flash success">{{ message }}</div>
-      <div v-if="error" class="flash error">{{ error }}</div>
-    </section>
-
-    <section class="card glass">
-      <div class="video-top">
-        <div>
-          <h2>Video darsliklar</h2>
-          <p class="muted">Ustoz xohlagan payt admin paneldan yangi darslik qo‘sha oladi. Live saqlangan bo‘lsa, shu yerda videoni ko‘rasiz.</p>
-        </div>
-        <span class="pill">{{ course.lesson_count || course.lessons?.length || 0 }} ta dars</span>
-      </div>
-
-      <div class="lesson-list">
-        <div v-for="lesson in (course.lessons || [])" :key="lesson.id" class="lesson-card">
-          <div>
-            <div class="badge">{{ lesson.order_no }}-dars</div>
-            <h3>{{ lesson.title }}</h3>
-            <p class="muted">{{ lesson.summary || 'Video darslik tayyor.' }}</p>
-          </div>
-          <RouterLink
-            v-if="course.is_unlocked || lesson.is_preview"
-            class="btn btn-sm"
-            :to="`/course/${course.slug}/lesson/${lesson.id}`"
-          >Ko‘rish</RouterLink>
-          <button v-else class="btn btn-sm btn-ghost" disabled>Quluflangan</button>
-        </div>
-        <div v-if="!course.lessons?.length" class="flash error">Hali video darslik qo‘shilmagan.</div>
-      </div>
-    </section>
-  </div>
+    </div>
+  </section>
+  <div v-if="error" class="flash error">{{ error }}</div>
 </template>

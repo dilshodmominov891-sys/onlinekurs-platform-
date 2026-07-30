@@ -1,6 +1,9 @@
 // Lightweight DOM translator for EduLive Pro.
 // It translates all visible static texts after every route change and after dynamic data is rendered.
 const T = {
+  'Ochiq': { uz:'Ochiq', ru:'Открыт', en:'Open' },
+  'Yopiq': { uz:'Yopiq', ru:'Закрыт', en:'Closed' },
+  'Ko‘rish': { uz:'Ko‘rish', ru:'Открыть', en:'Open' },
   // General / navigation
   'Online kurs platforma': { uz:'Online kurs platforma', ru:'Онлайн-платформа курсов', en:'Online course platform' },
   'Home': { uz:'Home', ru:'Главная', en:'Home' },
@@ -380,10 +383,12 @@ rebuildIndex()
 
 function currentLang() {
   const bodyRole = document.body?.dataset?.eduliveRole || 'auth'
-  if (bodyRole === 'admin') return localStorage.getItem('edulive_lang_admin') || 'uz'
-  if (bodyRole === 'teacher') return localStorage.getItem('edulive_lang_teacher') || 'uz'
-  if (bodyRole === 'student') return localStorage.getItem('edulive_lang_student') || 'uz'
-  return localStorage.getItem('edulive_lang_auth') || 'uz'
+  let saved = 'uz'
+  if (bodyRole === 'admin') saved = localStorage.getItem('edulive_lang_admin') || 'uz'
+  else if (bodyRole === 'teacher') saved = localStorage.getItem('edulive_lang_teacher') || 'uz'
+  else if (bodyRole === 'student') saved = localStorage.getItem('edulive_lang_student') || 'uz'
+  else saved = localStorage.getItem('edulive_lang_auth') || 'uz'
+  return ['uz', 'ru'].includes(saved) ? saved : 'uz'
 }
 
 function translateString(rawText, lang = currentLang()) {

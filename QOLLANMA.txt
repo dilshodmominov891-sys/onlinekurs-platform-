@@ -1,0 +1,13 @@
+BU PATCH NIMALARNI O'ZGARTIRADI
+- Ochiq registratsiya olib tashlandi.
+- Admin, ustoz va o'quvchi bitta login/parol oynasidan kiradi.
+- Admin O'quvchilar bo'limidan login, parol va kurslarni beradi.
+- Telegram orqali kurs kodi olish olib tashlandi.
+- Sidebar ikonkalari olib tashlandi.
+- Faqat O'zbek va Rus tillari qoldi.
+- Dizayn oq, light va sodda qilindi.
+- Ortiqcha animatsiya va doimiy so'rovlar olib tashlandi.
+
+ISHLATISH
+Ushbu papkadagi backend va frontend papkalarini GitHub'dan clone qilingan loyiha papkasi ustiga ko'chiring.
+Windows so'rasa: Replace files / Заменить файлы ni bosing.

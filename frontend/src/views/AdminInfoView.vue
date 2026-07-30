@@ -23,7 +23,7 @@ const overview = ref({
   yearly_purchases_count:0,
 })
 const loading = ref(false)
-let socket, timer
+let socket
 const studentPreview = computed(() => (overview.value.active_students || []).length ? overview.value.active_students : (overview.value.recent_students || []))
 
 async function load(){
@@ -43,8 +43,8 @@ function connect(){
 }
 function download(kind){ window.open(apiUrl(`/admin/export/${kind}.xls`), '_blank') }
 function downloadAll(){ window.open(apiUrl('/admin/export/all-info.xls'), '_blank') }
-onMounted(() => { load(); connect(); timer=setInterval(load,3000) })
-onBeforeUnmount(() => { if(timer) clearInterval(timer); socket?.disconnect() })
+onMounted(() => { load(); connect() })
+onBeforeUnmount(() => { socket?.disconnect() })
 </script>
 
 <template>

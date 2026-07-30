@@ -1,345 +1,227 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import brandLogo from './assets/brand-logo.svg'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { api, socketURL } from './lib'
-import { saveSession, clearSession, hydrateSession } from './sessionStore'
+import { clearSession, hydrateSession, saveSession } from './sessionStore'
 import { io } from 'socket.io-client'
 
+const route = useRoute()
+const router = useRouter()
 const student = ref(null)
 const teacher = ref(null)
 const role = ref(null)
-const telegramLink = 'https://t.me/mominov9969'
 const activeLive = ref(null)
 const mobileMenuOpen = ref(false)
 const langMenuOpen = ref(false)
-let socket
-const route = useRoute()
-const router = useRouter()
-
 const lang = ref('uz')
+let socket = null
+
 const translations = {
   uz: {
-    brandSub:'Online kurs platforma',
-    home:'Home', homeSub:'Bosh sahifa', admin:'Admin qismi', adminSub:'Barcha nazorat', teacher:'Ustoz bo‘limi', teacherSub:'Kurs, live va testlar',
-    createTeacher:'Ustoz yaratish', createTeacherSub:'Yangi ustoz login', info:'Ma’lumot', infoSub:'Sayt statistikasi', courses:'Kurslar', coursesSub:'Barcha pullik kurslar',
-    createCourse:'Kurs yaratish', createCourseSub:'Yangi pullik kurs', tests:'Test qo‘shish', testsSub:'Frontend va backend', results:'Natijalar', resultsSub:'Foiz va yechimlar',
-    live:'Live dars', liveSub:'Ekran yozish va dars o‘tish', liveCourses:'Live darslar', liveCoursesSub:'Video yozuv kurslari', practice:'Test yechish', practiceSub:'O‘quvchi testi',
-    questions:'Savollar', questionsSub:'AI yordamchi', telegram:'Telegram', logout:'Chiqish', openMenu:'Menyuni ochish', liveOn:'Live dars yoqildi', liveInfo:'Ustoz hozir jonli dars o‘tyapti. Qo‘shilish tugmasi faqat live yoqilganda chiqadi.', joinLive:'Live darsga qo‘shilish'
+    home: 'Bosh sahifa', admin: 'Admin panel', students: 'O‘quvchilar', teachers: 'Ustozlar', info: 'Hisobotlar',
+    teacher: 'Ustoz paneli', createCourse: 'Kurs yaratish', tests: 'Testlar', results: 'Natijalar', live: 'Live dars',
+    courses: 'Kurslar', liveCourses: 'Dars yozuvlari', practice: 'Test ishlash', questions: 'Savollar',
+    logout: 'Chiqish', openMenu: 'Menyuni ochish', liveOn: 'Live dars boshlandi', joinLive: 'Darsga kirish',
+    brandSub: 'Online ta’lim platformasi',
   },
   ru: {
-    brandSub:'Онлайн-платформа курсов',
-    home:'Главная', homeSub:'Главная страница', admin:'Админ', adminSub:'Контроль', teacher:'Учитель', teacherSub:'Курсы, live и тесты',
-    createTeacher:'Создать учителя', createTeacherSub:'Новый логин', info:'Информация', infoSub:'Статистика сайта', courses:'Курсы', coursesSub:'Все платные курсы',
-    createCourse:'Создать курс', createCourseSub:'Новый платный курс', tests:'Добавить тест', testsSub:'Frontend и backend', results:'Результаты', resultsSub:'Проценты и ответы',
-    live:'Live урок', liveSub:'Запись экрана', liveCourses:'Live курсы', liveCoursesSub:'Видео-записи', practice:'Решать тест', practiceSub:'Тест ученика',
-    questions:'Вопросы', questionsSub:'AI помощник', telegram:'Telegram', logout:'Выход', openMenu:'Открыть меню', liveOn:'Live урок включен', liveInfo:'Учитель проводит онлайн урок. Кнопка подключения появляется только при live.', joinLive:'Подключиться'
+    home: 'Главная', admin: 'Админ панель', students: 'Ученики', teachers: 'Учителя', info: 'Отчёты',
+    teacher: 'Панель учителя', createCourse: 'Создать курс', tests: 'Тесты', results: 'Результаты', live: 'Live урок',
+    courses: 'Курсы', liveCourses: 'Записи уроков', practice: 'Пройти тест', questions: 'Вопросы',
+    logout: 'Выйти', openMenu: 'Открыть меню', liveOn: 'Live урок начался', joinLive: 'Войти на урок',
+    brandSub: 'Платформа онлайн-обучения',
   },
-  en: {
-    brandSub:'Online course platform',
-    home:'Home', homeSub:'Dashboard', admin:'Admin', adminSub:'Control center', teacher:'Teacher', teacherSub:'Courses, live, tests',
-    createTeacher:'Create teacher', createTeacherSub:'New teacher login', info:'Info', infoSub:'Site analytics', courses:'Courses', coursesSub:'All paid courses',
-    createCourse:'Create course', createCourseSub:'New paid course', tests:'Add tests', testsSub:'Frontend and backend', results:'Results', resultsSub:'Scores and answers',
-    live:'Live class', liveSub:'Screen recording', liveCourses:'Live courses', liveCoursesSub:'Recorded videos', practice:'Practice tests', practiceSub:'Student tests',
-    questions:'Questions', questionsSub:'AI assistant', telegram:'Telegram', logout:'Logout', openMenu:'Open menu', liveOn:'Live class is on', liveInfo:'Teacher is teaching live now. Join button appears only when live is enabled.', joinLive:'Join live'
-  }
 }
-function t(key){ return translations[lang.value]?.[key] || translations.uz[key] || key }
 const langOptions = [
-  { code: 'uz', label: 'Uzbekcha', short: 'UZ', flag: '🇺🇿' },
-  { code: 'ru', label: 'Русский', short: 'RU', flag: '🇷🇺' },
-  { code: 'en', label: 'English', short: 'EN', flag: '🇬🇧' },
+  { code: 'uz', label: 'O‘zbek' },
+  { code: 'ru', label: 'Русский' },
 ]
-const currentLangOption = computed(() => langOptions.find(item => item.code === lang.value) || langOptions[0])
-function langStorageKey(currentRole = role.value){
+function t(key) { return translations[lang.value]?.[key] || translations.uz[key] || key }
+const currentLang = computed(() => langOptions.find(item => item.code === lang.value) || langOptions[0])
+const isAdmin = computed(() => role.value === 'admin')
+const isTeacher = computed(() => role.value === 'teacher' || role.value === 'admin')
+const showSidebar = computed(() => Boolean(role.value) && route.name !== 'student-auth')
+const displayName = computed(() => {
+  if (role.value === 'admin') return lang.value === 'ru' ? 'Администратор' : 'Admin'
+  if (role.value === 'teacher') return teacher.value?.full_name || teacher.value?.username || t('teacher')
+  return `${student.value?.first_name || ''} ${student.value?.last_name || ''}`.trim() || student.value?.username || ''
+})
+
+function langStorageKey(currentRole = role.value) {
   if (currentRole === 'admin') return 'edulive_lang_admin'
   if (currentRole === 'teacher') return 'edulive_lang_teacher'
   if (currentRole === 'student') return 'edulive_lang_student'
   return 'edulive_lang_auth'
 }
-function loadRoleLang(currentRole = role.value){
+function loadRoleLang(currentRole = role.value) {
   const saved = localStorage.getItem(langStorageKey(currentRole)) || 'uz'
-  lang.value = ['uz','ru','en'].includes(saved) ? saved : 'uz'
+  lang.value = ['uz', 'ru'].includes(saved) ? saved : 'uz'
   window.dispatchEvent(new CustomEvent('edulive-lang-change', { detail: lang.value }))
 }
-function setLang(next){
+function setLang(next) {
   lang.value = next
-  localStorage.setItem(langStorageKey(), lang.value)
+  localStorage.setItem(langStorageKey(), next)
   langMenuOpen.value = false
-  window.dispatchEvent(new CustomEvent('edulive-lang-change', { detail: lang.value }))
+  window.dispatchEvent(new CustomEvent('edulive-lang-change', { detail: next }))
 }
-function cycleLang(){
-  langMenuOpen.value = !langMenuOpen.value
-}
-function closeLangMenu(){
+function closeMenus() {
+  mobileMenuOpen.value = false
   langMenuOpen.value = false
 }
-function handleDocumentClick(event){
+function handleDocumentClick(event) {
   if (!event.target.closest('.lang-picker')) langMenuOpen.value = false
 }
 
-
-function applySessionState(data = {}) {
+function applySession(data = {}) {
   role.value = data.role || null
   student.value = data.student || null
   teacher.value = data.teacher || null
   loadRoleLang(role.value)
-  notifyStudentOnline()
 }
-
 function handleSessionChange(event) {
-  applySessionState(event?.detail || {})
+  applySession(event.detail || {})
 }
-
 async function loadSession() {
   const saved = hydrateSession()
-  if (saved?.role) {
-    student.value = saved.student || null
-    teacher.value = saved.teacher || null
-    role.value = saved.role || null
-    loadRoleLang(role.value)
-  } else {
-    loadRoleLang(null)
-  }
+  if (saved?.role) applySession(saved)
+  else loadRoleLang(null)
+
   try {
     const { data } = await api.get('/access/session')
-
-    // Railway/Netlify boshqa domenlarda bo‘lganda brauzer cookie javobi
-    // kechikishi yoki vaqtincha bo‘sh kelishi mumkin. Shu holatda localStorage
-    // dagi amaldagi rolni o‘chirib yubormaymiz — aks holda sidebar yo‘qoladi.
     if (data?.role) {
-      student.value = data.student || null
-      teacher.value = data.teacher || null
-      role.value = data.role
       saveSession(data)
-    } else if (saved?.role) {
-      student.value = saved.student || null
-      teacher.value = saved.teacher || null
-      role.value = saved.role
-    } else {
+      applySession(data)
+    } else if (!saved?.role) {
       clearSession()
-      student.value = null
-      teacher.value = null
-      role.value = null
+      applySession({})
     }
-
-    loadRoleLang(role.value)
-    if (role.value === 'student') {
-      try {
-        const liveRes = await api.get('/live/active')
-        activeLive.value = liveRes.data.class || null
-      } catch { activeLive.value = null }
-    } else {
-      activeLive.value = null
-    }
-    notifyStudentOnline()
   } catch {
-    // Backend vaqtincha javob bermasa, saqlangan sessiya bilan sidebar ishlashda davom etadi.
-    if (!saved?.role) {
-      clearSession()
-      student.value = null
-      teacher.value = null
-      role.value = null
-      activeLive.value = null
-    }
+    if (!saved?.role) applySession({})
   }
 }
-
-function connectLiveSocket() {
+async function loadActiveLive() {
+  if (role.value !== 'student') {
+    activeLive.value = null
+    return
+  }
+  try {
+    const { data } = await api.get('/live/active')
+    activeLive.value = data.class || null
+  } catch {
+    activeLive.value = null
+  }
+}
+function ensureStudentSocket() {
+  if (role.value !== 'student') {
+    socket?.disconnect()
+    socket = null
+    return
+  }
   if (socket) return
   socket = io(socketURL, { transports: ['websocket', 'polling'], withCredentials: true })
-  socket.on('connect', notifyStudentOnline)
+  socket.on('connect', () => {
+    if (student.value) socket.emit('student-online', { student: student.value })
+  })
   socket.on('live-status-changed', ({ class: klass, is_live }) => {
-    if (role.value === 'student') activeLive.value = is_live ? klass : null
+    activeLive.value = is_live ? klass : null
   })
 }
-
-function notifyStudentOnline() {
-  if (socket?.connected && role.value === 'student' && student.value) {
-    socket.emit('student-online', { student: student.value })
-  }
-}
-
 function logout() {
-  // UI darhol chiqadi; server sessiyasini tozalash fon rejimida davom etadi.
   api.post('/student/logout').catch(() => {})
   clearSession()
-  student.value = null
-  teacher.value = null
-  role.value = null
+  applySession({})
   activeLive.value = null
-  loadRoleLang(null)
-  mobileMenuOpen.value = false
+  closeMenus()
   router.replace('/auth')
 }
 
-const showSidebar = computed(() => !!role.value && route.name !== 'student-auth' && route.name !== 'admin-login')
-const isAdmin = computed(() => role.value === 'admin')
-const isTeacher = computed(() => role.value === 'teacher' || role.value === 'admin')
-const displayName = computed(() => {
-  if (isAdmin.value) return 'Bosh ustoz'
-  if (role.value === 'teacher') return teacher.value?.full_name || teacher.value?.username || 'Ustoz'
-  return ((student.value?.first_name || '') + ' ' + (student.value?.last_name || '')).trim()
-})
-
 onMounted(() => {
-  const saved = hydrateSession()
-  if (saved?.role) applySessionState(saved)
   window.addEventListener('edulive-session-change', handleSessionChange)
-  loadSession()
-  connectLiveSocket()
   document.addEventListener('click', handleDocumentClick)
+  loadSession()
 })
 onBeforeUnmount(() => {
   socket?.disconnect()
   window.removeEventListener('edulive-session-change', handleSessionChange)
   document.removeEventListener('click', handleDocumentClick)
 })
-watch(() => route.fullPath, () => {
-  // Har bir bo‘lim almashganda backend sessiyasini qayta so‘ramaymiz.
-  // Bu menyular orasidagi o‘tishni darhol qiladi.
-  mobileMenuOpen.value = false
-  closeLangMenu()
-}, { immediate: false })
-watch(role, (newRole) => {
-  document.body.dataset.eduliveRole = newRole || 'auth'
-  loadRoleLang(newRole)
+watch(role, () => {
+  document.body.dataset.eduliveRole = role.value || 'auth'
+  loadRoleLang(role.value)
+  ensureStudentSocket()
+  loadActiveLive()
 }, { immediate: true })
-watch([role, student], notifyStudentOnline)
+watch(() => route.fullPath, closeMenus)
+watch(student, () => {
+  if (socket?.connected && student.value) socket.emit('student-online', { student: student.value })
+})
 </script>
 
 <template>
-  <div :class="showSidebar ? 'app-shell layout-shell' : 'app-shell auth-shell'">
-
+  <div :class="showSidebar ? 'app-shell layout-shell simple-layout' : 'app-shell auth-shell'">
     <div v-if="showSidebar" class="mobile-menu-overlay" :class="{ show: mobileMenuOpen }" @click="mobileMenuOpen = false"></div>
 
-    <aside v-if="showSidebar" class="sidebar glass compact-sidebar clean-sidebar" :class="{ 'mobile-open': mobileMenuOpen }">
-      <div>
-        <div class="logo-wrap compact-logo-wrap premium-logo-wrap">
-          <img :src="brandLogo" alt="EduLive Pro" class="brand-logo-image" />
-          <div>
-            <div class="brand-title">EduLive Pro</div>
-            <div class="brand-sub">{{ t('brandSub') }}</div>
-          </div>
+    <aside v-if="showSidebar" class="sidebar simple-sidebar" :class="{ 'mobile-open': mobileMenuOpen }">
+      <div class="sidebar-main">
+        <div class="simple-brand">
+          <strong>EduLive Pro</strong>
+          <small>{{ t('brandSub') }}</small>
         </div>
+
         <div class="lang-picker sidebar-lang">
-          <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="cycleLang">
-            <span class="selected-lang">{{ currentLangOption.short }}</span>
-            <span class="lang-arrow">⌄</span>
+          <button class="lang-toggle simple-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
+            <span>{{ currentLang.label }}</span><span>⌄</span>
           </button>
-          <div v-if="langMenuOpen" class="lang-menu glass">
-            <button v-for="item in langOptions" :key="item.code" type="button" class="lang-option" :class="{active:item.code===lang}" @click="setLang(item.code)">
-              <span>{{ item.flag }}</span><strong>{{ item.short }}</strong><small>{{ item.label }}</small>
-            </button>
+          <div v-if="langMenuOpen" class="lang-menu simple-lang-menu">
+            <button v-for="item in langOptions" :key="item.code" class="lang-option simple-lang-option" :class="{ active: item.code === lang }" type="button" @click="setLang(item.code)">{{ item.label }}</button>
           </div>
         </div>
 
-        <nav class="sidebar-nav compact-sidebar-nav cleaner-nav">
-          <RouterLink class="side-link" to="/home">
-            <span class="side-icon">🏠</span>
-            <span><strong>{{ t('home') }}</strong><small>{{ t('homeSub') }}</small></span>
-          </RouterLink>
+        <nav class="sidebar-nav simple-sidebar-nav">
+          <RouterLink class="side-link" to="/home"><span>{{ t('home') }}</span></RouterLink>
 
           <template v-if="isTeacher">
-            <RouterLink v-if="isAdmin" class="side-link" to="/admin">
-              <span class="side-icon">🛡️</span>
-              <span><strong>{{ t('admin') }}</strong><small>{{ t('adminSub') }}</small></span>
-            </RouterLink>
-            <RouterLink v-if="isAdmin" class="side-link" to="/admin/teachers">
-              <span class="side-icon">👤</span>
-              <span><strong>{{ t('createTeacher') }}</strong><small>{{ t('createTeacherSub') }}</small></span>
-            </RouterLink>
-            <RouterLink v-if="isAdmin" class="side-link" to="/admin/info">
-              <span class="side-icon">📊</span>
-              <span><strong>{{ t('info') }}</strong><small>{{ t('infoSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/teacher">
-              <span class="side-icon">👨‍🏫</span>
-              <span><strong>{{ t('teacher') }}</strong><small>{{ t('teacherSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/teacher/courses">
-              <span class="side-icon">📚</span>
-              <span><strong>{{ t('createCourse') }}</strong><small>{{ t('createCourseSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/teacher/tests">
-              <span class="side-icon">📝</span>
-              <span><strong>{{ t('tests') }}</strong><small>{{ t('testsSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/results-board">
-              <span class="side-icon">📈</span>
-              <span><strong>{{ t('results') }}</strong><small>{{ t('resultsSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/live">
-              <span class="side-icon">🔴</span>
-              <span><strong>{{ t('live') }}</strong><small>{{ t('liveSub') }}</small></span>
-            </RouterLink>
+            <RouterLink v-if="isAdmin" class="side-link" to="/admin"><span>{{ t('admin') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/students"><span>{{ t('students') }}</span></RouterLink>
+            <RouterLink v-if="isAdmin" class="side-link" to="/admin/teachers"><span>{{ t('teachers') }}</span></RouterLink>
+            <RouterLink v-if="isAdmin" class="side-link" to="/admin/info"><span>{{ t('info') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/teacher"><span>{{ t('teacher') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/teacher/courses"><span>{{ t('createCourse') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/teacher/tests"><span>{{ t('tests') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/results-board"><span>{{ t('results') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/live"><span>{{ t('live') }}</span></RouterLink>
           </template>
 
           <template v-else>
-            <RouterLink class="side-link" to="/courses">
-              <span class="side-icon">📚</span>
-              <span><strong>{{ t('courses') }}</strong><small>{{ t('coursesSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/live-courses">
-              <span class="side-icon">🎥</span>
-              <span><strong>{{ t('liveCourses') }}</strong><small>{{ t('liveCoursesSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/practice-tests">
-              <span class="side-icon">🧪</span>
-              <span><strong>{{ t('practice') }}</strong><small>{{ t('practiceSub') }}</small></span>
-            </RouterLink>
-            <RouterLink class="side-link" to="/questions">
-              <span class="side-icon">💬</span>
-              <span><strong>{{ t('questions') }}</strong><small>{{ t('questionsSub') }}</small></span>
-            </RouterLink>
+            <RouterLink class="side-link" to="/courses"><span>{{ t('courses') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/live-courses"><span>{{ t('liveCourses') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/practice-tests"><span>{{ t('practice') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/questions"><span>{{ t('questions') }}</span></RouterLink>
           </template>
-
-          <a class="side-link" :href="telegramLink" target="_blank" rel="noreferrer">
-            <span class="side-icon">✈️</span>
-            <span><strong>{{ t('telegram') }}</strong><small>@mominov9969</small></span>
-          </a>
         </nav>
       </div>
 
-      <div class="sidebar-footer compact-sidebar-footer">
-        <div class="student-chip small-chip">{{ displayName }}</div>
-        <button class="btn btn-sm btn-secondary sidebar-logout-btn" type="button" @click="logout">{{ t('logout') }}</button>
+      <div class="sidebar-footer simple-sidebar-footer">
+        <div class="current-user">{{ displayName }}</div>
+        <button class="btn btn-light logout-button" type="button" @click="logout">{{ t('logout') }}</button>
       </div>
     </aside>
 
     <main class="main-shell">
-      <header v-if="showSidebar" class="mobile-top glass">
-        <button class="mobile-menu-btn" type="button" @click="mobileMenuOpen = true"  :aria-label="t('openMenu')">
+      <header v-if="showSidebar" class="mobile-top simple-mobile-top">
+        <button class="mobile-menu-btn" type="button" @click="mobileMenuOpen = true" :aria-label="t('openMenu')">
           <span></span><span></span><span></span>
         </button>
-        <div class="mobile-brand-block">
-          <img :src="brandLogo" alt="EduLive Pro" class="mobile-brand-logo" />
-          <div>
-            <div class="brand-title">EduLive Pro</div>
-            <div class="student-chip small-chip mobile-chip">{{ displayName }}</div>
-          </div>
-        </div>
-        <div class="lang-picker mobile-lang">
-          <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="cycleLang">
-            <span class="selected-lang">{{ currentLangOption.short }}</span>
-            <span class="lang-arrow">⌄</span>
-          </button>
-          <div v-if="langMenuOpen" class="lang-menu glass mobile-lang-menu">
-            <button v-for="item in langOptions" :key="item.code" type="button" class="lang-option" :class="{active:item.code===lang}" @click="setLang(item.code)">
-              <span>{{ item.flag }}</span><strong>{{ item.short }}</strong><small>{{ item.label }}</small>
-            </button>
-          </div>
-        </div>
-        <button class="btn btn-sm btn-secondary mobile-logout" type="button" @click="logout">{{ t('logout') }}</button>
+        <strong>EduLive Pro</strong>
+        <button class="mobile-logout-simple" type="button" @click="logout">{{ t('logout') }}</button>
       </header>
-      <div :class="showSidebar ? 'container page page-with-sidebar' : 'container page page-auth-only'">
-        <div v-if="activeLive && !isTeacher" class="card glass live-global-alert">
-          <div><strong>🔴 {{ t('liveOn') }}</strong><p class="muted">{{ t('liveInfo') }}</p></div>
-          <RouterLink class="btn btn-warning" :to="`/room/${activeLive.room_code}`">{{ t('joinLive') }}</RouterLink>
+
+      <div :class="showSidebar ? 'container page page-with-sidebar' : 'page-auth-only'">
+        <div v-if="activeLive && role === 'student'" class="live-global-alert simple-live-alert">
+          <strong>{{ t('liveOn') }}</strong>
+          <RouterLink class="btn btn-sm" :to="`/room/${activeLive.room_code}`">{{ t('joinLive') }}</RouterLink>
         </div>
-        <RouterView v-slot="{ Component }">
-          <component :is="Component" />
-        </RouterView>
+        <RouterView />
       </div>
     </main>
   </div>

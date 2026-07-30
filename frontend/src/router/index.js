@@ -17,6 +17,7 @@ import TeacherTeachersView from '../views/TeacherTeachersView.vue'
 import TeacherLiveStudioView from '../views/TeacherLiveStudioView.vue'
 import AdminTeacherCreateView from '../views/AdminTeacherCreateView.vue'
 import AdminInfoView from '../views/AdminInfoView.vue'
+import AdminStudentsView from '../views/AdminStudentsView.vue'
 import StudentQuestionsView from '../views/StudentQuestionsView.vue'
 
 const router = createRouter({
@@ -29,7 +30,6 @@ const router = createRouter({
     { path: '/teacher/teachers', name: 'teacher-teachers', component: TeacherTeachersView },
     { path: '/teacher/tests', name: 'teacher-tests', component: TeacherTestsView },
     { path: '/courses', name: 'courses', component: HomeView, props: { section: 'courses' } },
-    { path: '/telegram', name: 'telegram', component: HomeView, props: { section: 'telegram' } },
     { path: '/live', name: 'live', component: TeacherLiveStudioView },
     { path: '/live-courses', name: 'live-courses', component: LiveCoursesView },
     { path: '/results-board', name: 'results-board', component: ResultsBoardView },
@@ -40,6 +40,7 @@ const router = createRouter({
     { path: '/course/:slug/lesson/:lessonId', name: 'lesson-player', component: LessonPlayerView, props: true },
     { path: '/admin/login', redirect: '/auth' },
     { path: '/admin', name: 'admin-dashboard', component: AdminDashboardView },
+    { path: '/students', name: 'admin-students', component: AdminStudentsView },
     { path: '/admin/teachers', name: 'admin-teachers-create', component: AdminTeacherCreateView },
     { path: '/admin/info', name: 'admin-info', component: AdminInfoView },
     { path: '/admin/class/:id', name: 'admin-class', component: AdminClassView, props: true },
@@ -64,15 +65,14 @@ router.beforeEach((to) => {
 
   if (!role) return '/auth'
 
-  const adminOnly = new Set(['admin-dashboard', 'admin-class', 'admin-teachers-create', 'admin-info'])
+  const adminOnly = new Set(['admin-dashboard', 'admin-class', 'admin-teachers-create', 'admin-info', 'teacher-teachers'])
   if (adminOnly.has(to.name) || String(to.path).startsWith('/admin')) {
     return role === 'admin' ? true : '/teacher'
   }
-  const teacherOnly = new Set(['teacher', 'teacher-courses', 'teacher-teachers', 'teacher-tests', 'live', 'results-board'])
+  const teacherOnly = new Set(['teacher', 'teacher-courses', 'teacher-tests', 'live', 'results-board', 'admin-students'])
   if (teacherOnly.has(to.name)) {
     return (role === 'teacher' || role === 'admin') ? true : '/home'
   }
-  if (to.name === 'teacher-teachers' && role !== 'admin') return '/teacher'
   return true
 })
 

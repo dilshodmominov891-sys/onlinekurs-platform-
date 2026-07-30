@@ -33,6 +33,10 @@ from backend.db import (
     save_test_result,
     create_student,
     list_students,
+    list_students_with_courses,
+    set_student_courses,
+    update_student_account,
+    delete_student,
     auth_student,
     get_student_by_id,
     find_student_by_contact,
@@ -406,57 +410,7 @@ def admin_session():
 
 @app.post('/api/student/register')
 def student_register():
-    data = request.get_json(silent=True) or {}
-    first_name = (data.get('first_name') or '').strip()
-    last_name = (data.get('last_name') or '').strip()
-    phone_raw = (data.get('phone') or '').strip()
-    email = (data.get('email') or '').strip().lower()
-    username = (data.get('username') or '').strip().lower()
-    password = (data.get('password') or '').strip()
-    phone = normalize_phone(phone_raw)
-
-    if len(first_name) < 2 or len(last_name) < 2:
-        return error('Ism va familiya kamida 2 ta harf bo‘lishi kerak.')
-    if not phone:
-        return error('Telefon raqami 9 xonali bo‘lishi kerak. Masalan: 881649969 yoki +998881649969')
-    if not is_valid_email(email):
-        return error('Email manzil noto‘g‘ri kiritildi.')
-    if not re.fullmatch(r'[a-z0-9._-]{3,32}', username):
-        return error('Login 3–32 ta lotin harfi, raqam, nuqta, chiziqcha yoki pastki chiziqdan iborat bo‘lsin.')
-    if username in {ADMIN_LOGIN.lower(), TEACHER_LOGIN.lower()}:
-        return error('Bu login band. Boshqa login tanlang.', 409)
-    if len(password) < 6 or len(password) > 64:
-        return error('Parol kamida 6 ta, ko‘pi bilan 64 ta belgidan iborat bo‘lsin.')
-
-    existing = find_student_by_contact(phone, email)
-    if existing:
-        return error('Bu telefon yoki email oldin ro‘yxatdan o‘tgan.', 409)
-
-    try:
-        student = create_student(
-            first_name,
-            last_name,
-            phone,
-            email,
-            username,
-            generate_password_hash(password),
-        )
-        # Registratsiyadan keyin avtomatik login qilinmaydi.
-        # O‘quvchi o‘zi yaratgan login va parol bilan alohida kiradi.
-        session.pop('student_id', None)
-        session.pop('pending_student_id', None)
-        send_registration_to_telegram(student)
-        safe_student = {key: value for key, value in student.items() if key != 'password'}
-        return ok({
-            'student': safe_student,
-            'message': 'Registratsiya muvaffaqiyatli. Endi o‘quvchi login bo‘limidan login va parolingiz bilan kiring.'
-        }, 201)
-    except Exception as exc:
-        if not is_integrity_error(exc):
-            if is_operational_error(exc) and 'locked' in str(exc).lower():
-                return error('Baza vaqtincha band. 2 soniyadan keyin yana urinib ko‘ring.', 503)
-            raise
-        return error('Bu login band. Boshqa login tanlang.', 409)
+    return error('Ochiq registratsiya o‘chirilgan. Login va parolni admin beradi.', 403)
 
 
 @app.post('/api/access/login')
@@ -590,13 +544,7 @@ def course_unlock(slug):
     course = get_course_by_slug(slug, request.student['id'])
     if not course:
         return error('Kurs topilmadi.', 404)
-    data = request.get_json(silent=True) or {}
-    purchase_password = (data.get('purchase_password') or '').strip()
-    if purchase_password != (course.get('purchase_password') or '123445'):
-        return error('Kurs kodi xato. Kodni Telegram orqali oling.', 401)
-    unlock_course(request.student['id'], course['id'])
-    course = get_course_by_slug(slug, request.student['id'])
-    return ok({'course': serialize_course(course, include_lessons=True), 'message': 'Kurs ochildi.'})
+    return error('Kurs faqat admin tomonidan o‘quvchi akkauntiga biriktiriladi.', 403)
 
 
 @app.post('/api/admin/courses/<int:course_id>/lessons')
@@ -1305,6 +1253,124 @@ def student_ask_ai():
         # Quota tugagan bo‘lsa ham chat oynasi ChatGPT uslubida foydali javob qaytaradi.
         answer = smart_local_ai_answer(question, lang)
         return ok({'answer': answer, 'offline': True, 'source': 'friendly_backup', 'api_error': str(exc)[:180]})
+
+
+@app.get('/api/admin/students')
+@teacher_required
+def admin_students_list():
+    return ok({'students': list_students_with_courses(), 'courses': list_courses()})
+
+
+@app.post('/api/admin/students')
+@admin_required
+def admin_students_create():
+    data = request.get_json(silent=True) or {}
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
+    phone_raw = (data.get('phone') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    username = (data.get('username') or '').strip().lower()
+    password = (data.get('password') or '').strip()
+    course_ids = data.get('course_ids') or []
+    phone = normalize_phone(phone_raw) if phone_raw else ''
+
+    if len(first_name) < 2 or len(last_name) < 2:
+        return error('Ism va familiya kamida 2 ta harf bo‘lishi kerak.')
+    if phone_raw and not phone:
+        return error('Telefon raqami noto‘g‘ri.')
+    if email and not is_valid_email(email):
+        return error('Email manzil noto‘g‘ri.')
+    if not re.fullmatch(r'[a-z0-9._-]{3,32}', username):
+        return error('Login 3–32 ta lotin harfi, raqam, nuqta, chiziqcha yoki pastki chiziqdan iborat bo‘lsin.')
+    if username in {ADMIN_LOGIN.lower(), TEACHER_LOGIN.lower()} or any((item.get('username') or '').lower() == username for item in list_teachers()):
+        return error('Bu login band. Boshqa login tanlang.', 409)
+    if len(password) < 6 or len(password) > 64:
+        return error('Parol kamida 6 ta, ko‘pi bilan 64 ta belgidan iborat bo‘lsin.')
+
+    try:
+        student = create_student(
+            first_name,
+            last_name,
+            phone,
+            email,
+            username,
+            generate_password_hash(password),
+        )
+        set_student_courses(student['id'], course_ids)
+        safe_student = {key: value for key, value in student.items() if key != 'password'}
+        safe_student['course_ids'] = [int(item) for item in course_ids if str(item).isdigit()]
+        return ok({'student': safe_student, 'message': 'O‘quvchi login va paroli yaratildi.'}, 201)
+    except Exception as exc:
+        if is_integrity_error(exc):
+            return error('Bu login band.', 409)
+        raise
+
+
+@app.put('/api/admin/students/<int:student_id>')
+@admin_required
+def admin_students_update(student_id):
+    data = request.get_json(silent=True) or {}
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
+    phone_raw = (data.get('phone') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    username = (data.get('username') or '').strip().lower()
+    password = (data.get('password') or '').strip()
+    course_ids = data.get('course_ids') or []
+    phone = normalize_phone(phone_raw) if phone_raw else ''
+
+    if len(first_name) < 2 or len(last_name) < 2:
+        return error('Ism va familiya to‘liq bo‘lishi kerak.')
+    if phone_raw and not phone:
+        return error('Telefon raqami noto‘g‘ri.')
+    if email and not is_valid_email(email):
+        return error('Email manzil noto‘g‘ri.')
+    if not re.fullmatch(r'[a-z0-9._-]{3,32}', username):
+        return error('Login formati noto‘g‘ri.')
+    if username in {ADMIN_LOGIN.lower(), TEACHER_LOGIN.lower()} or any((item.get('username') or '').lower() == username for item in list_teachers()):
+        return error('Bu login band. Boshqa login tanlang.', 409)
+    if password and (len(password) < 6 or len(password) > 64):
+        return error('Yangi parol kamida 6 ta belgidan iborat bo‘lsin.')
+
+    try:
+        updated = update_student_account(
+            student_id,
+            first_name,
+            last_name,
+            phone,
+            email,
+            username,
+            generate_password_hash(password) if password else None,
+        )
+        if not updated:
+            return error('O‘quvchi topilmadi.', 404)
+        set_student_courses(student_id, course_ids)
+        return ok({'student': updated, 'message': 'O‘quvchi ma’lumoti saqlandi.'})
+    except Exception as exc:
+        if is_integrity_error(exc):
+            return error('Bu login band.', 409)
+        raise
+
+
+@app.put('/api/admin/students/<int:student_id>/courses')
+@admin_required
+def admin_students_courses(student_id):
+    data = request.get_json(silent=True) or {}
+    result = set_student_courses(student_id, data.get('course_ids') or [])
+    if result is None:
+        return error('O‘quvchi topilmadi.', 404)
+    return ok({'course_ids': result, 'message': 'O‘quvchining kurslari saqlandi.'})
+
+
+@app.delete('/api/admin/students/<int:student_id>')
+@admin_required
+def admin_students_delete(student_id):
+    removed = delete_student(student_id)
+    if not removed:
+        return error('O‘quvchi topilmadi.', 404)
+    if session.get('student_id') == student_id:
+        session.pop('student_id', None)
+    return ok({'student': removed, 'message': 'O‘quvchi o‘chirildi.'})
 
 
 @app.get('/api/admin/teachers')
