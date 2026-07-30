@@ -3688,3 +3688,29 @@ h3 { font-size: clamp(18px, 2vw, 22px); margin: 0 0 8px; }
     padding: 12px 14px;
   }
 }
+
+/* Unified single login tab */
+.auth-switch-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.auth-switch-two .track-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  padding: 12px 14px;
+  justify-content: center;
+  text-align: center;
+  border-radius: 18px;
+  font-size: 15px;
+}
+@media (max-width: 420px) {
+  .auth-switch-two { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .auth-switch-two .track-btn { min-height: 50px; padding: 10px 8px; font-size: 14px; }
+}
+@media (max-width: 300px) {
+  .auth-switch-two { grid-template-columns: 1fr; }
+}
