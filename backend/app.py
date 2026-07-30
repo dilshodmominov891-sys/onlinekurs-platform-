@@ -101,11 +101,23 @@ frontend_origins = [
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# Netlify frontend va Railway backend alohida HTTPS domenlarda ishlaydi.
+# Productionda cross-site session cookie saqlanishi uchun Secure + SameSite=None kerak.
+is_production = bool(
+    os.environ.get('RAILWAY_ENVIRONMENT')
+    or os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    or os.environ.get('RAILWAY_STATIC_URL')
+)
+default_cookie_secure = '1' if is_production else '0'
+cookie_secure = os.environ.get('COOKIE_SECURE', default_cookie_secure) == '1'
+default_cookie_samesite = 'None' if cookie_secure else 'Lax'
+
 app.config.update(
     SECRET_KEY=SECRET_KEY,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE', '0') == '1',
-    SESSION_COOKIE_SAMESITE=os.environ.get('COOKIE_SAMESITE', 'Lax'),
+    SESSION_COOKIE_SECURE=cookie_secure,
+    SESSION_COOKIE_SAMESITE=os.environ.get('COOKIE_SAMESITE', default_cookie_samesite),
     MAX_CONTENT_LENGTH=int(os.environ.get('MAX_UPLOAD_MB', '300')) * 1024 * 1024,
 )
 CORS(app, supports_credentials=True, origins=frontend_origins)
