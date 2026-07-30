@@ -3601,3 +3601,90 @@ h3 { font-size: clamp(18px, 2vw, 22px); margin: 0 0 8px; }
 @media (max-width: 420px) {
   .auth-simple-card { padding: 16px; border-radius: 24px; }
 }
+
+
+/* Unified logout and fast navigation update */
+.sidebar-logout-btn { width: 100%; min-height: 44px; }
+.mobile-logout { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 600px) {
+  .mobile-top { flex-wrap: wrap; gap: 10px; }
+  .mobile-brand-block { flex: 1 1 145px; }
+  .mobile-lang { margin-left: auto; }
+  .mobile-logout { width: auto; min-width: 84px; }
+}
+@media (max-width: 360px) {
+  .mobile-logout { width: 100%; order: 4; }
+}
+
+/* Student-created login + unified auth */
+.auth-unified-card {
+  width: min(900px, calc(100% - 18px));
+  max-width: 900px !important;
+}
+.auth-switch-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.auth-switch-three .track-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  padding: 12px 10px;
+  justify-content: center;
+  text-align: center;
+  border-radius: 18px;
+  font-size: 15px;
+}
+.auth-form-stack { margin-top: 8px; }
+.auth-name-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.auth-unified-card input {
+  min-height: 58px;
+  padding: 14px 18px;
+  border-radius: 19px;
+}
+.auth-submit-btn:disabled {
+  opacity: .68;
+  cursor: wait;
+  transform: none;
+}
+.teacher-students-preview {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.student-preview-main {
+  min-width: 0;
+  flex: 1;
+}
+.student-preview-main .small-text {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px) {
+  .auth-switch-three {
+    grid-template-columns: 1fr;
+  }
+  .auth-switch-three .track-btn {
+    min-height: 50px;
+  }
+  .auth-name-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 360px) {
+  .auth-unified-card {
+    width: min(100%, calc(100% - 8px));
+    padding: 13px;
+  }
+  .auth-unified-card input {
+    min-height: 52px;
+    padding: 12px 14px;
+  }
+}

@@ -15,6 +15,7 @@ from flask import Flask, jsonify, request, session, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import generate_password_hash
 
 load_dotenv()
 
@@ -274,6 +275,7 @@ def send_registration_to_telegram(student):
         f"Familiya: {student.get('last_name', '')}\n"
         f"Telefon: {student.get('phone', '') or '-'}\n"
         f"Email: {student.get('email', '') or '-'}\n"
+        f"Login: {student.get('username', '') or '-'}\n"
         f"Vaqt: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
     )
     try:
@@ -409,41 +411,52 @@ def student_register():
     last_name = (data.get('last_name') or '').strip()
     phone_raw = (data.get('phone') or '').strip()
     email = (data.get('email') or '').strip().lower()
+    username = (data.get('username') or '').strip().lower()
+    password = (data.get('password') or '').strip()
     phone = normalize_phone(phone_raw)
+
     if len(first_name) < 2 or len(last_name) < 2:
         return error('Ism va familiya kamida 2 ta harf bo‘lishi kerak.')
     if not phone:
         return error('Telefon raqami 9 xonali bo‘lishi kerak. Masalan: 881649969 yoki +998881649969')
     if not is_valid_email(email):
         return error('Email manzil noto‘g‘ri kiritildi.')
+    if not re.fullmatch(r'[a-z0-9._-]{3,32}', username):
+        return error('Login 3–32 ta lotin harfi, raqam, nuqta, chiziqcha yoki pastki chiziqdan iborat bo‘lsin.')
+    if username in {ADMIN_LOGIN.lower(), TEACHER_LOGIN.lower()}:
+        return error('Bu login band. Boshqa login tanlang.', 409)
+    if len(password) < 6 or len(password) > 64:
+        return error('Parol kamida 6 ta, ko‘pi bilan 64 ta belgidan iborat bo‘lsin.')
 
-    username = email
-    password = secrets.token_urlsafe(10)
+    existing = find_student_by_contact(phone, email)
+    if existing:
+        return error('Bu telefon yoki email oldin ro‘yxatdan o‘tgan.', 409)
+
     try:
-        student = create_student(first_name, last_name, phone, email, username, password)
-        session['student_id'] = student['id']
+        student = create_student(
+            first_name,
+            last_name,
+            phone,
+            email,
+            username,
+            generate_password_hash(password),
+        )
+        # Registratsiyadan keyin avtomatik login qilinmaydi.
+        # O‘quvchi o‘zi yaratgan login va parol bilan alohida kiradi.
+        session.pop('student_id', None)
         session.pop('pending_student_id', None)
-        session.pop('is_admin', None)
-        session.pop('teacher_id', None)
-        session.pop('is_teacher', None)
         send_registration_to_telegram(student)
         safe_student = {key: value for key, value in student.items() if key != 'password'}
-        return ok({'student': safe_student, 'message': 'Registratsiya tugadi. Saytga xush kelibsiz.'}, 201)
+        return ok({
+            'student': safe_student,
+            'message': 'Registratsiya muvaffaqiyatli. Endi o‘quvchi login bo‘limidan login va parolingiz bilan kiring.'
+        }, 201)
     except Exception as exc:
         if not is_integrity_error(exc):
             if is_operational_error(exc) and 'locked' in str(exc).lower():
                 return error('Baza vaqtincha band. 2 soniyadan keyin yana urinib ko‘ring.', 503)
             raise
-        existing = find_student_by_contact(phone, email)
-        if existing:
-            session['student_id'] = existing['id']
-            session.pop('pending_student_id', None)
-            session.pop('is_admin', None)
-            session.pop('teacher_id', None)
-            session.pop('is_teacher', None)
-            safe_student = {key: value for key, value in existing.items() if key != 'password'}
-            return ok({'student': safe_student, 'message': 'Bu telefon yoki email oldin ro‘yxatdan o‘tgan. Mavjud profil bilan saytga kirdingiz.'}, 200)
-        return error('Bu telefon yoki email allaqachon ro‘yxatdan o‘tgan.', 409)
+        return error('Bu login band. Boshqa login tanlang.', 409)
 
 
 @app.post('/api/access/login')
@@ -970,6 +983,13 @@ def on_disconnect():
 @teacher_required
 def admin_live_stats():
     return ok({'stats': live_stats_summary(), 'classes': list_classes()})
+
+
+@app.get('/api/teacher/students')
+@teacher_required
+def teacher_students():
+    # Ustoz va admin registratsiyadan o‘tgan o‘quvchilarning xavfsiz ma’lumotlarini ko‘radi.
+    return ok({'students': list_students()})
 
 @app.get('/api/admin/overview')
 @admin_required

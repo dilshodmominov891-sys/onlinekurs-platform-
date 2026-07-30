@@ -25,13 +25,5 @@ export const resolveAssetUrl = (url = '') => {
 export const api = axios.create({
   baseURL: apiBaseURL,
   withCredentials: true,
-  timeout: 45000,
-  headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-})
-
-api.interceptors.request.use((config) => {
-  if ((config.method || 'get').toLowerCase() === 'get') {
-    config.params = { ...(config.params || {}), _t: Date.now() }
-  }
-  return config
+  timeout: 15000,
 })

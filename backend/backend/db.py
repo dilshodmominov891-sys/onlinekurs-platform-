@@ -3,6 +3,7 @@ import os
 import re
 import sqlite3
 from datetime import datetime
+from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, 'platform.db')
@@ -531,11 +532,25 @@ def list_students():
 def auth_student(username, password):
     conn = get_db()
     row = conn.execute(
-        'SELECT * FROM students WHERE LOWER(username) = LOWER(?) AND password = ? LIMIT 1',
-        (username, password)
+        'SELECT * FROM students WHERE LOWER(username) = LOWER(?) LIMIT 1',
+        (username,)
     ).fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    student = row_to_dict(row)
+    stored_password = str(student.get('password') or '')
+    is_hashed = stored_password.startswith(('scrypt:', 'pbkdf2:'))
+    valid = check_password_hash(stored_password, password) if is_hashed else stored_password == password
+
+    # Eski ochiq parollar birinchi muvaffaqiyatli kirishda avtomatik hash qilinadi.
+    if valid and not is_hashed:
+        conn.execute('UPDATE students SET password = ? WHERE id = ?', (generate_password_hash(password), student['id']))
+        conn.commit()
+
     conn.close()
-    return row_to_dict(row)
+    return student if valid else None
 
 
 def get_student_by_id(student_id):

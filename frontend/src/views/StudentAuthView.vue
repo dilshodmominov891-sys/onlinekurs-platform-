@@ -5,10 +5,20 @@ import { api } from '../lib'
 import { saveSession } from '../sessionStore'
 
 const router = useRouter()
-const reg = reactive({ first_name: '', last_name: '', phone: '', email: '' })
-const login = reactive({ username: '', password: '' })
+const reg = reactive({
+  first_name: '',
+  last_name: '',
+  phone: '',
+  email: '',
+  username: '',
+  password: '',
+  password_confirm: '',
+})
+const studentLogin = reactive({ username: '', password: '' })
+const teacherLogin = reactive({ username: '', password: '' })
 const error = ref('')
 const success = ref('')
+const loading = ref(false)
 const activeTab = ref('register')
 
 const lang = ref(localStorage.getItem('edulive_lang_auth') || 'uz')
@@ -20,39 +30,75 @@ const langOptions = [
 ]
 const dict = {
   uz:{
-    reg:'Registratsiya', login:'Ustoz login',
-    regTitle:'Saytga kirish uchun ro‘yxatdan o‘ting', loginTitle:'Ustoz paneliga kirish',
-    regSub:'Ma’lumotlarni to‘liq kiriting. Registratsiyadan keyin siz o‘quvchi sifatida saytga kirasiz.',
-    loginSub:'Admin yoki ustoz shu bo‘limdan login va parol bilan kiradi.',
+    register:'Registratsiya', studentLogin:'O‘quvchi login', teacherLogin:'Ustoz login',
+    regTitle:'Saytga kirish uchun ro‘yxatdan o‘ting',
+    studentTitle:'O‘quvchi paneliga kirish',
+    teacherTitle:'Ustoz paneliga kirish',
+    regSub:'Ma’lumotlarni kiriting va o‘zingiz uchun login hamda parol yarating. Registratsiyadan keyin avtomatik kirilmaydi.',
+    studentSub:'Registratsiyada yaratgan login va parolingiz bilan kiring.',
+    teacherSub:'Admin yoki ustoz shu bo‘limdan login va parol bilan kiradi.',
     name:'Ism', last:'Familiya', phone:'Telefon: 881649969 yoki +998881649969', email:'Email',
-    regBtn:'Registratsiya qilish', loginPh:'Ustoz yoki admin login', pass:'Parol', loginBtn:'Ustoz paneliga kirish'
+    newLogin:'Yangi login yarating', newPass:'Yangi parol yarating', confirmPass:'Parolni qayta kiriting',
+    login:'Login', pass:'Parol', regBtn:'Registratsiya qilish', studentBtn:'O‘quvchi paneliga kirish', teacherBtn:'Ustoz paneliga kirish',
+    passMismatch:'Parollar bir xil emas.'
   },
   ru:{
-    reg:'Регистрация', login:'Вход учителя',
-    regTitle:'Зарегистрируйтесь для входа на сайт', loginTitle:'Вход в панель учителя',
-    regSub:'Введите данные полностью. После регистрации вы войдёте как ученик.',
-    loginSub:'Учитель или админ входит здесь по логину и паролю.',
+    register:'Регистрация', studentLogin:'Вход ученика', teacherLogin:'Вход учителя',
+    regTitle:'Зарегистрируйтесь для входа на сайт',
+    studentTitle:'Вход в панель ученика',
+    teacherTitle:'Вход в панель учителя',
+    regSub:'Введите данные и создайте собственный логин и пароль. После регистрации автоматического входа не будет.',
+    studentSub:'Войдите с логином и паролем, созданными при регистрации.',
+    teacherSub:'Учитель или админ входит здесь по логину и паролю.',
     name:'Имя', last:'Фамилия', phone:'Телефон: 881649969 или +998881649969', email:'Email',
-    regBtn:'Зарегистрироваться', loginPh:'Логин учителя или админа', pass:'Пароль', loginBtn:'Войти в панель учителя'
+    newLogin:'Создайте новый логин', newPass:'Создайте новый пароль', confirmPass:'Повторите пароль',
+    login:'Логин', pass:'Пароль', regBtn:'Зарегистрироваться', studentBtn:'Войти как ученик', teacherBtn:'Войти в панель учителя',
+    passMismatch:'Пароли не совпадают.'
   },
   en:{
-    reg:'Registration', login:'Teacher login',
-    regTitle:'Register to enter the platform', loginTitle:'Teacher panel login',
-    regSub:'Fill in your details completely. After registration you will enter as a student.',
-    loginSub:'Teacher or admin can log in here with username and password.',
+    register:'Registration', studentLogin:'Student login', teacherLogin:'Teacher login',
+    regTitle:'Register to enter the platform',
+    studentTitle:'Student panel login',
+    teacherTitle:'Teacher panel login',
+    regSub:'Enter your details and create your own username and password. Registration does not log you in automatically.',
+    studentSub:'Log in with the username and password created during registration.',
+    teacherSub:'Teacher or admin can log in here with username and password.',
     name:'First name', last:'Last name', phone:'Phone: 881649969 or +998881649969', email:'Email',
-    regBtn:'Register', loginPh:'Teacher or admin login', pass:'Password', loginBtn:'Enter teacher panel'
+    newLogin:'Create a new username', newPass:'Create a new password', confirmPass:'Repeat password',
+    login:'Username', pass:'Password', regBtn:'Register', studentBtn:'Enter student panel', teacherBtn:'Enter teacher panel',
+    passMismatch:'Passwords do not match.'
   }
 }
-function tr(k){return dict[lang.value]?.[k] || dict.uz[k] || k}
+function tr(k){ return dict[lang.value]?.[k] || dict.uz[k] || k }
+const currentLang = computed(() => langOptions.find(i => i.code === lang.value) || langOptions[0])
+const activeLabel = computed(() => {
+  if (activeTab.value === 'student') return tr('studentLogin')
+  if (activeTab.value === 'teacher') return tr('teacherLogin')
+  return tr('register')
+})
+const activeTitle = computed(() => {
+  if (activeTab.value === 'student') return tr('studentTitle')
+  if (activeTab.value === 'teacher') return tr('teacherTitle')
+  return tr('regTitle')
+})
+const activeSubtitle = computed(() => {
+  if (activeTab.value === 'student') return tr('studentSub')
+  if (activeTab.value === 'teacher') return tr('teacherSub')
+  return tr('regSub')
+})
+
+function setTab(tab) {
+  activeTab.value = tab
+  error.value = ''
+  success.value = ''
+}
 function setLang(next){
   lang.value = next
-  localStorage.setItem('edulive_lang_auth', lang.value)
+  localStorage.setItem('edulive_lang_auth', next)
   langMenuOpen.value = false
-  window.dispatchEvent(new CustomEvent('edulive-lang-change',{detail:lang.value}))
+  window.dispatchEvent(new CustomEvent('edulive-lang-change',{detail:next}))
 }
 function toggleLang(){ langMenuOpen.value = !langMenuOpen.value }
-const currentLang = computed(() => langOptions.find(i => i.code === lang.value) || langOptions[0])
 function handleDocumentClick(event){
   if (!event.target.closest('.lang-picker')) langMenuOpen.value = false
 }
@@ -60,40 +106,70 @@ function handleDocumentClick(event){
 async function submitRegister() {
   error.value = ''
   success.value = ''
+  if (reg.password !== reg.password_confirm) {
+    error.value = tr('passMismatch')
+    return
+  }
+  loading.value = true
   try {
-    const { data } = await api.post('/student/register', reg)
-    saveSession({ role: 'student', student: data.student })
-    success.value = data.message || 'Registratsiya bo‘ldi.'
-    reg.first_name = ''
-    reg.last_name = ''
-    reg.phone = ''
-    reg.email = ''
-    await router.replace('/home')
+    const payload = {
+      first_name: reg.first_name,
+      last_name: reg.last_name,
+      phone: reg.phone,
+      email: reg.email,
+      username: reg.username,
+      password: reg.password,
+    }
+    const { data } = await api.post('/student/register', payload)
+    studentLogin.username = reg.username
+    studentLogin.password = ''
+    Object.keys(reg).forEach((key) => { reg[key] = '' })
+    activeTab.value = 'student'
+    success.value = data.message || 'Registratsiya muvaffaqiyatli. Endi login va parol bilan kiring.'
   } catch (err) {
     error.value = err.response?.data?.error || 'Registratsiya bo‘lmadi.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function submitStudentLogin() {
+  error.value = ''
+  success.value = ''
+  loading.value = true
+  try {
+    const { data } = await api.post('/access/login', studentLogin)
+    if (data?.role !== 'student') {
+      error.value = 'Bu bo‘lim faqat o‘quvchilar uchun.'
+      return
+    }
+    saveSession(data)
+    studentLogin.password = ''
+    await router.replace('/home')
+  } catch (err) {
+    error.value = err.response?.data?.error || 'O‘quvchi login yoki paroli xato.'
+  } finally {
+    loading.value = false
   }
 }
 
 async function submitTeacherLogin() {
   error.value = ''
   success.value = ''
+  loading.value = true
   try {
-    const { data } = await api.post('/access/login', login)
+    const { data } = await api.post('/access/login', teacherLogin)
+    if (!['admin', 'teacher'].includes(data?.role)) {
+      error.value = 'Bu bo‘lim faqat ustoz va admin uchun.'
+      return
+    }
     saveSession(data)
-    const role = data?.role || ''
-    login.username = ''
-    login.password = ''
-    if (role === 'admin') {
-      await router.replace('/admin')
-      return
-    }
-    if (role === 'teacher') {
-      await router.replace('/teacher')
-      return
-    }
-    await router.replace('/home')
+    teacherLogin.password = ''
+    await router.replace(data.role === 'admin' ? '/admin' : '/teacher')
   } catch (err) {
-    error.value = err.response?.data?.error || 'Login bo‘lmadi.'
+    error.value = err.response?.data?.error || 'Ustoz login yoki paroli xato.'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -103,9 +179,9 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
 
 <template>
   <div class="center-box auth-page-wrap auth-page-compact">
-    <div class="card glass form-card auth-card-wide auth-card-tall elegant-auth-card auth-simple-card">
+    <div class="card glass form-card auth-card-wide auth-card-tall elegant-auth-card auth-simple-card auth-unified-card">
       <div class="auth-topline auth-topline-language">
-        <span class="pill">{{ tr('reg') }}</span>
+        <span class="pill">{{ activeLabel }}</span>
         <div class="lang-picker auth-lang-picker">
           <button class="lang-toggle lang-sticker flag-style-toggle" type="button" @click="toggleLang">
             <span class="selected-lang">{{ currentLang.short }}</span>
@@ -119,29 +195,41 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
         </div>
       </div>
 
-      <h1 class="auth-title" v-if="activeTab === 'register'">{{ tr('regTitle') }}</h1>
-      <h1 class="auth-title" v-else>{{ tr('loginTitle') }}</h1>
-      <p class="muted auth-subtitle" v-if="activeTab === 'register'">{{ tr('regSub') }}</p>
-      <p class="muted auth-subtitle" v-else>{{ tr('loginSub') }}</p>
+      <h1 class="auth-title">{{ activeTitle }}</h1>
+      <p class="muted auth-subtitle">{{ activeSubtitle }}</p>
 
-      <div class="track-switcher auth-switch auth-switch-equal">
-        <button class="track-btn" :class="{ active: activeTab === 'register' }" @click="activeTab = 'register'">{{ tr('reg') }}</button>
-        <button class="track-btn" :class="{ active: activeTab === 'login' }" @click="activeTab = 'login'">{{ tr('login') }}</button>
+      <div class="track-switcher auth-switch auth-switch-three">
+        <button class="track-btn" :class="{ active: activeTab === 'register' }" @click="setTab('register')">{{ tr('register') }}</button>
+        <button class="track-btn" :class="{ active: activeTab === 'student' }" @click="setTab('student')">{{ tr('studentLogin') }}</button>
+        <button class="track-btn" :class="{ active: activeTab === 'teacher' }" @click="setTab('teacher')">{{ tr('teacherLogin') }}</button>
       </div>
 
-      <div v-if="activeTab === 'register'" class="stack" autocomplete="off">
-        <input v-model="reg.first_name" :placeholder="tr('name')" autocomplete="off" name="student_first_name_new" />
-        <input v-model="reg.last_name" :placeholder="tr('last')" autocomplete="off" name="student_last_name_new" />
-        <input v-model="reg.phone" :placeholder="tr('phone')" autocomplete="off" name="student_phone_new" />
-        <input v-model="reg.email" :placeholder="tr('email')" autocomplete="off" name="student_email_new" />
-        <button class="btn auth-submit-btn" @click="submitRegister">{{ tr('regBtn') }}</button>
-      </div>
+      <form v-if="activeTab === 'register'" class="stack auth-form-stack" autocomplete="off" @submit.prevent="submitRegister">
+        <div class="auth-name-grid">
+          <input v-model="reg.first_name" :placeholder="tr('name')" autocomplete="given-name" required />
+          <input v-model="reg.last_name" :placeholder="tr('last')" autocomplete="family-name" required />
+        </div>
+        <input v-model="reg.phone" :placeholder="tr('phone')" inputmode="tel" autocomplete="tel" required />
+        <input v-model="reg.email" type="email" :placeholder="tr('email')" autocomplete="email" required />
+        <input v-model.trim="reg.username" :placeholder="tr('newLogin')" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+        <div class="auth-name-grid">
+          <input v-model="reg.password" type="password" :placeholder="tr('newPass')" autocomplete="new-password" minlength="6" required />
+          <input v-model="reg.password_confirm" type="password" :placeholder="tr('confirmPass')" autocomplete="new-password" minlength="6" required />
+        </div>
+        <button class="btn auth-submit-btn" :disabled="loading">{{ loading ? '...' : tr('regBtn') }}</button>
+      </form>
 
-      <div v-else class="stack" autocomplete="off">
-        <input v-model="login.username" :placeholder="tr('loginPh')" autocomplete="off" autocapitalize="none" spellcheck="false" name="edu_login_user_empty" />
-        <input v-model="login.password" type="password" :placeholder="tr('pass')" autocomplete="new-password" autocapitalize="none" spellcheck="false" name="edu_login_pass_empty" />
-        <button class="btn btn-secondary auth-submit-btn" @click="submitTeacherLogin">{{ tr('loginBtn') }}</button>
-      </div>
+      <form v-else-if="activeTab === 'student'" class="stack auth-form-stack" autocomplete="off" @submit.prevent="submitStudentLogin">
+        <input v-model.trim="studentLogin.username" :placeholder="tr('login')" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+        <input v-model="studentLogin.password" type="password" :placeholder="tr('pass')" autocomplete="current-password" required />
+        <button class="btn auth-submit-btn" :disabled="loading">{{ loading ? '...' : tr('studentBtn') }}</button>
+      </form>
+
+      <form v-else class="stack auth-form-stack" autocomplete="off" @submit.prevent="submitTeacherLogin">
+        <input v-model.trim="teacherLogin.username" :placeholder="tr('login')" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+        <input v-model="teacherLogin.password" type="password" :placeholder="tr('pass')" autocomplete="current-password" required />
+        <button class="btn btn-secondary auth-submit-btn" :disabled="loading">{{ loading ? '...' : tr('teacherBtn') }}</button>
+      </form>
 
       <div v-if="error" class="flash error">{{ error }}</div>
       <div v-if="success" class="flash success">{{ success }}</div>

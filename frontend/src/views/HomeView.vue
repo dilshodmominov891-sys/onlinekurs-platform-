@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api } from '../lib'
+import { hydrateSession } from '../sessionStore'
 import CourseCard from '../components/CourseCard.vue'
 
 const props = defineProps({ section: { type: String, default: 'home' } })
@@ -12,7 +13,12 @@ const student = ref(null)
 const teacher = ref(null)
 const liveStats = ref({ week_count: 0, month_count: 0, total_count: 0, recent: [], by_room: [] })
 const teacherError = ref('')
+const registeredStudents = ref([])
 const telegramLink = 'https://t.me/mominov9969'
+
+let loadPromise = null
+let lastLoadedAt = 0
+const CACHE_MS = 30000
 
 const fallbackCourses = [
   { id: 'f1', slug: 'frontend-html-css', title: 'HTML & CSS Boshlang‘ich', track: 'frontend', technology: 'HTML & CSS', description: 'Frontend asoslari, layout, responsive dizayn va amaliy mashqlar.', duration: '4 hafta', level: '1-bosqich', price: 199000, is_unlocked: 0, is_live_class: 0 },
@@ -31,18 +37,17 @@ function normalizeCourse(item) {
   }
 }
 
-async function load() {
+async function load(force = false) {
+  if (loadPromise) return loadPromise
+  if (!force && courses.value.length && Date.now() - lastLoadedAt < CACHE_MS) return
+
+  loadPromise = (async () => {
   teacherError.value = ''
-  try {
-    const sessionRes = await api.get('/student/session')
-    sessionRole.value = sessionRes.data.role || null
-    student.value = sessionRes.data.student || null
-    teacher.value = sessionRes.data.teacher || null
-  } catch {
-    sessionRole.value = null
-    student.value = null
-    teacher.value = null
-  }
+  // Sessiyani har bo‘lim almashganda serverdan kutmaymiz — local session darhol ishlaydi.
+  const savedSession = hydrateSession()
+  sessionRole.value = savedSession?.role || null
+  student.value = savedSession?.student || null
+  teacher.value = savedSession?.teacher || null
 
   try {
     const [classesRes, coursesRes] = await Promise.all([api.get('/classes'), api.get('/courses')])
@@ -56,11 +61,23 @@ async function load() {
 
   if (sessionRole.value === 'teacher' || sessionRole.value === 'admin') {
     try {
-      const { data } = await api.get('/admin/live-stats')
-      liveStats.value = data.stats || liveStats.value
+      const [statsRes, studentsRes] = await Promise.all([
+        api.get('/admin/live-stats'),
+        api.get('/teacher/students'),
+      ])
+      liveStats.value = statsRes.data.stats || liveStats.value
+      registeredStudents.value = studentsRes.data.students || []
     } catch (err) {
-      teacherError.value = err.response?.data?.error || 'Statistika yuklanmadi.'
+      teacherError.value = err.response?.data?.error || 'Ustoz ma’lumotlari yuklanmadi.'
     }
+  }
+    lastLoadedAt = Date.now()
+  })()
+
+  try {
+    await loadPromise
+  } finally {
+    loadPromise = null
   }
 }
 
@@ -188,6 +205,25 @@ watch(() => props.section, () => {
         <RouterLink class="mini-card hover-lift" to="/results-board"><strong>Natijalar</strong><span class="muted">Ism, familiya, to‘g‘ri soni va foizi</span></RouterLink>
         <RouterLink class="mini-card hover-lift" to="/live"><strong>Live statistika</strong><span class="muted">Bir hafta va bir oy bo‘yicha kirishlar</span></RouterLink>
         <RouterLink v-if="sessionRole === 'admin'" class="mini-card hover-lift" to="/admin"><strong>Admin qismi</strong><span class="muted">Ustoz yaratish va barcha nazorat shu yerda</span></RouterLink>
+      </div>
+      <div class="teacher-students-preview section-nested">
+        <div class="section-head compact-head">
+          <div>
+            <h3>Ro‘yxatdan o‘tgan o‘quvchilar</h3>
+            <p class="muted">O‘quvchilar yaratgan login va aloqa ma’lumotlari. Parollar xavfsizlik uchun ko‘rsatilmaydi.</p>
+          </div>
+          <span class="pill">{{ registeredStudents.length }} ta</span>
+        </div>
+        <div class="student-list compact-student-list">
+          <div v-for="item in registeredStudents.slice(0, 5)" :key="item.id" class="student-item online-student-row hover-card">
+            <div class="avatar-mini">{{ (item.first_name || 'O').slice(0,1) }}</div>
+            <div class="student-preview-main">
+              <strong>{{ `${item.first_name || ''} ${item.last_name || ''}`.trim() }}</strong>
+              <div class="muted small-text">Login: {{ item.username }} · {{ item.phone || 'telefon yo‘q' }} · {{ item.email || 'email yo‘q' }}</div>
+            </div>
+          </div>
+          <p v-if="!registeredStudents.length" class="muted">Hali registratsiya qilingan o‘quvchi yo‘q.</p>
+        </div>
       </div>
       <div v-if="teacherError" class="flash error">{{ teacherError }}</div>
     </div>

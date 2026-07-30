@@ -79,6 +79,18 @@ function handleDocumentClick(event){
 }
 
 
+function applySessionState(data = {}) {
+  role.value = data.role || null
+  student.value = data.student || null
+  teacher.value = data.teacher || null
+  loadRoleLang(role.value)
+  notifyStudentOnline()
+}
+
+function handleSessionChange(event) {
+  applySessionState(event?.detail || {})
+}
+
 async function loadSession() {
   const saved = hydrateSession()
   if (saved?.role) {
@@ -170,8 +182,19 @@ const displayName = computed(() => {
   return ((student.value?.first_name || '') + ' ' + (student.value?.last_name || '')).trim()
 })
 
-onMounted(() => { loadSession(); connectLiveSocket(); document.addEventListener('click', handleDocumentClick) })
-onBeforeUnmount(() => { socket?.disconnect(); document.removeEventListener('click', handleDocumentClick) })
+onMounted(() => {
+  const saved = hydrateSession()
+  if (saved?.role) applySessionState(saved)
+  window.addEventListener('edulive-session-change', handleSessionChange)
+  loadSession()
+  connectLiveSocket()
+  document.addEventListener('click', handleDocumentClick)
+})
+onBeforeUnmount(() => {
+  socket?.disconnect()
+  window.removeEventListener('edulive-session-change', handleSessionChange)
+  document.removeEventListener('click', handleDocumentClick)
+})
 watch(() => route.fullPath, () => {
   // Har bir bo‘lim almashganda backend sessiyasini qayta so‘ramaymiz.
   // Bu menyular orasidagi o‘tishni darhol qiladi.
