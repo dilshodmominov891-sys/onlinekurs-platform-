@@ -63,6 +63,10 @@ router.beforeEach((to) => {
   const role = saved?.role || ''
   if (!role) return '/auth'
 
+  // Admin barcha boshqaruv bo‘limlariga kira oladi. Har bir sahifada
+  // takroriy login tekshiruvi sabab noto‘g‘ri /auth ga qaytib ketmaydi.
+  if (role === 'admin') return true
+
   const adminOnly = new Set(['admin-dashboard', 'admin-class', 'admin-teachers-create', 'admin-info', 'teacher-teachers'])
   if (adminOnly.has(to.name) || String(to.path).startsWith('/admin')) {
     return role === 'admin' ? true : '/teacher'

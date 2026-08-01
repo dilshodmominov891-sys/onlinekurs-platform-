@@ -1,3 +1,12 @@
-1. Ushbu patch ichidagi backend va frontend papkalarini GitHub clone qilingan loyiha ustiga ko‘chiring.
-2. Windows so‘rasa Replace files / Заменить файлы ni bosing.
-3. Keyin git add, commit va push qiling.
+EDULIVE PRO — ADMIN HISOBOT VA RESPONSIVE LIGHT PATCH
+
+Tuzatildi:
+1. Admin Hisobotlar bo‘limiga kirganda login sahifasiga qaytib ketishi olib tashlandi.
+2. Admin barcha boshqaruv sahifalariga kira oladi.
+3. Sidebar bo‘limlariga har bir bo‘lim vazifasini tushuntiruvchi qisqa izohlar qo‘shildi.
+4. Til tanlash tema tugmalaridan oldin joylashtirildi.
+5. Light dizayn, yumshoq hover va sahifa o‘tish animatsiyasi qo‘shildi.
+6. 320px gacha responsive va elementlar bir-birining ustiga chiqmasligi yaxshilandi.
+
+Patch ichidagi frontend papkasini GitHub’dan clone qilingan loyiha ustiga ko‘chiring.
+Replace files / Заменить файлы ni bosing.

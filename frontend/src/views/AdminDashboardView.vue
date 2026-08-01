@@ -1,10 +1,9 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { api, socketURL } from '../lib'
 import { io } from 'socket.io-client'
 
-const router = useRouter()
 const overview = ref({ students_count: 0, active_students_count: 0, active_students: [], teachers_count: 0, courses_count: 0, results_count: 0 })
 const error = ref('')
 const lang = ref(localStorage.getItem('edulive_lang_admin') || 'uz')
@@ -29,8 +28,7 @@ async function load() {
     const { data } = await api.get('/admin/overview')
     overview.value = { ...overview.value, ...data }
   } catch (err) {
-    if (err.response?.status === 401) router.replace('/auth')
-    else error.value = err.response?.data?.error || 'Ma’lumot yuklanmadi.'
+    error.value = err.response?.data?.error || 'Ma’lumot yuklanmadi. Sahifani yangilab ko‘ring.'
   }
 }
 function connect() {

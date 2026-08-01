@@ -19,16 +19,38 @@ let socket = null
 
 const translations = {
   uz: {
-    home: 'Bosh sahifa', admin: 'Admin panel', students: 'O‘quvchilar', teachers: 'Ustozlar', info: 'Hisobotlar',
-    teacher: 'Ustoz paneli', createCourse: 'Kurs yaratish', tests: 'Testlar', results: 'Natijalar', live: 'Live dars',
-    courses: 'Kurslar', liveCourses: 'Dars yozuvlari', practice: 'Test ishlash', questions: 'Savollar',
+    home: 'Bosh sahifa', homeSub: 'Asosiy ma’lumot va tezkor yo‘llar',
+    admin: 'Admin panel', adminSub: 'Umumiy nazorat va statistika',
+    students: 'O‘quvchilar', studentsSub: 'Login, parol va kurslarni boshqarish',
+    teachers: 'Ustozlar', teachersSub: 'Ustoz yaratish va nazorat qilish',
+    info: 'Hisobotlar', infoSub: 'Kunlik, oylik va yillik Excel',
+    teacher: 'Ustoz paneli', teacherSub: 'Ustoz uchun boshqaruv markazi',
+    createCourse: 'Kurs yaratish', createCourseSub: 'Yangi kurs va darslar qo‘shish',
+    tests: 'Testlar', testsSub: 'Test yaratish va Excel yuklash',
+    results: 'Natijalar', resultsSub: 'O‘quvchi natijalarini ko‘rish',
+    live: 'Live dars', liveSub: 'Jonli dars boshlash va yozib olish',
+    courses: 'Kurslar', coursesSub: 'Biriktirilgan kurslarni ko‘rish',
+    liveCourses: 'Dars yozuvlari', liveCoursesSub: 'Saqlangan video darslar',
+    practice: 'Test ishlash', practiceSub: 'Mavjud testlarni yechish',
+    questions: 'Savollar', questionsSub: 'AI yordamchidan javob olish',
     logout: 'Chiqish', openMenu: 'Menyuni ochish', liveOn: 'Live dars boshlandi', joinLive: 'Darsga kirish',
     brandSub: 'Online ta’lim platformasi',
   },
   ru: {
-    home: 'Главная', admin: 'Админ панель', students: 'Ученики', teachers: 'Учителя', info: 'Отчёты',
-    teacher: 'Панель учителя', createCourse: 'Создать курс', tests: 'Тесты', results: 'Результаты', live: 'Live урок',
-    courses: 'Курсы', liveCourses: 'Записи уроков', practice: 'Пройти тест', questions: 'Вопросы',
+    home: 'Главная', homeSub: 'Основная информация и быстрые ссылки',
+    admin: 'Админ панель', adminSub: 'Общий контроль и статистика',
+    students: 'Ученики', studentsSub: 'Логины, пароли и доступ к курсам',
+    teachers: 'Учителя', teachersSub: 'Создание и управление учителями',
+    info: 'Отчёты', infoSub: 'Дневные, месячные и годовые Excel',
+    teacher: 'Панель учителя', teacherSub: 'Центр управления учителя',
+    createCourse: 'Создать курс', createCourseSub: 'Добавление курсов и уроков',
+    tests: 'Тесты', testsSub: 'Создание тестов и загрузка Excel',
+    results: 'Результаты', resultsSub: 'Просмотр результатов учеников',
+    live: 'Live урок', liveSub: 'Запуск и запись онлайн-урока',
+    courses: 'Курсы', coursesSub: 'Просмотр назначенных курсов',
+    liveCourses: 'Записи уроков', liveCoursesSub: 'Сохранённые видеоуроки',
+    practice: 'Пройти тест', practiceSub: 'Выполнение доступных тестов',
+    questions: 'Вопросы', questionsSub: 'Получение ответа от AI помощника',
     logout: 'Выйти', openMenu: 'Открыть меню', liveOn: 'Live урок начался', joinLive: 'Войти на урок',
     brandSub: 'Платформа онлайн-обучения',
   },
@@ -45,9 +67,8 @@ function applyTheme(next) {
   localStorage.setItem('edulive_theme', value)
   document.documentElement.dataset.theme = value
 }
-function setTheme(next) {
-  applyTheme(next)
-}
+function setTheme(next) { applyTheme(next) }
+
 const currentLang = computed(() => langOptions.find(item => item.code === lang.value) || langOptions[0])
 const isAdmin = computed(() => role.value === 'admin')
 const isTeacher = computed(() => role.value === 'teacher' || role.value === 'admin')
@@ -56,6 +77,26 @@ const displayName = computed(() => {
   if (role.value === 'admin') return lang.value === 'ru' ? 'Администратор' : 'Admin'
   if (role.value === 'teacher') return teacher.value?.full_name || teacher.value?.username || t('teacher')
   return `${student.value?.first_name || ''} ${student.value?.last_name || ''}`.trim() || student.value?.username || ''
+})
+const sectionMeta = computed(() => {
+  const routeMap = {
+    home: ['home', 'homeSub'],
+    'admin-dashboard': ['admin', 'adminSub'],
+    'admin-students': ['students', 'studentsSub'],
+    'admin-teachers-create': ['teachers', 'teachersSub'],
+    'admin-info': ['info', 'infoSub'],
+    teacher: ['teacher', 'teacherSub'],
+    'teacher-courses': ['createCourse', 'createCourseSub'],
+    'teacher-tests': ['tests', 'testsSub'],
+    'results-board': ['results', 'resultsSub'],
+    live: ['live', 'liveSub'],
+    courses: ['courses', 'coursesSub'],
+    'live-courses': ['liveCourses', 'liveCoursesSub'],
+    'practice-tests': ['practice', 'practiceSub'],
+    questions: ['questions', 'questionsSub'],
+  }
+  const keys = routeMap[route.name] || ['home', 'homeSub']
+  return { title: t(keys[0]), description: t(keys[1]) }
 })
 
 function langStorageKey(currentRole = role.value) {
@@ -89,9 +130,7 @@ function applySession(data = {}) {
   teacher.value = data.teacher || null
   loadRoleLang(role.value)
 }
-function handleSessionChange(event) {
-  applySession(event.detail || {})
-}
+function handleSessionChange(event) { applySession(event.detail || {}) }
 async function loadSession() {
   const saved = hydrateSession()
   if (saved?.role) applySession(saved)
@@ -180,27 +219,26 @@ watch(student, () => {
           <small>{{ t('brandSub') }}</small>
         </div>
 
-
         <nav class="sidebar-nav simple-sidebar-nav">
-          <RouterLink class="side-link" to="/home"><span>{{ t('home') }}</span></RouterLink>
+          <RouterLink class="side-link" to="/home"><span class="nav-copy"><strong>{{ t('home') }}</strong><small>{{ t('homeSub') }}</small></span></RouterLink>
 
           <template v-if="isTeacher">
-            <RouterLink v-if="isAdmin" class="side-link" to="/admin"><span>{{ t('admin') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/students"><span>{{ t('students') }}</span></RouterLink>
-            <RouterLink v-if="isAdmin" class="side-link" to="/admin/teachers"><span>{{ t('teachers') }}</span></RouterLink>
-            <RouterLink v-if="isAdmin" class="side-link" to="/admin/info"><span>{{ t('info') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/teacher"><span>{{ t('teacher') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/teacher/courses"><span>{{ t('createCourse') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/teacher/tests"><span>{{ t('tests') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/results-board"><span>{{ t('results') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/live"><span>{{ t('live') }}</span></RouterLink>
+            <RouterLink v-if="isAdmin" class="side-link" to="/admin"><span class="nav-copy"><strong>{{ t('admin') }}</strong><small>{{ t('adminSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/students"><span class="nav-copy"><strong>{{ t('students') }}</strong><small>{{ t('studentsSub') }}</small></span></RouterLink>
+            <RouterLink v-if="isAdmin" class="side-link" to="/admin/teachers"><span class="nav-copy"><strong>{{ t('teachers') }}</strong><small>{{ t('teachersSub') }}</small></span></RouterLink>
+            <RouterLink v-if="isAdmin" class="side-link" to="/admin/info"><span class="nav-copy"><strong>{{ t('info') }}</strong><small>{{ t('infoSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/teacher"><span class="nav-copy"><strong>{{ t('teacher') }}</strong><small>{{ t('teacherSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/teacher/courses"><span class="nav-copy"><strong>{{ t('createCourse') }}</strong><small>{{ t('createCourseSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/teacher/tests"><span class="nav-copy"><strong>{{ t('tests') }}</strong><small>{{ t('testsSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/results-board"><span class="nav-copy"><strong>{{ t('results') }}</strong><small>{{ t('resultsSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/live"><span class="nav-copy"><strong>{{ t('live') }}</strong><small>{{ t('liveSub') }}</small></span></RouterLink>
           </template>
 
           <template v-else>
-            <RouterLink class="side-link" to="/courses"><span>{{ t('courses') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/live-courses"><span>{{ t('liveCourses') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/practice-tests"><span>{{ t('practice') }}</span></RouterLink>
-            <RouterLink class="side-link" to="/questions"><span>{{ t('questions') }}</span></RouterLink>
+            <RouterLink class="side-link" to="/courses"><span class="nav-copy"><strong>{{ t('courses') }}</strong><small>{{ t('coursesSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/live-courses"><span class="nav-copy"><strong>{{ t('liveCourses') }}</strong><small>{{ t('liveCoursesSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/practice-tests"><span class="nav-copy"><strong>{{ t('practice') }}</strong><small>{{ t('practiceSub') }}</small></span></RouterLink>
+            <RouterLink class="side-link" to="/questions"><span class="nav-copy"><strong>{{ t('questions') }}</strong><small>{{ t('questionsSub') }}</small></span></RouterLink>
           </template>
         </nav>
       </div>
@@ -216,7 +254,10 @@ watch(student, () => {
         <button class="mobile-menu-btn" type="button" @click="mobileMenuOpen = true" :aria-label="t('openMenu')">
           <span></span><span></span><span></span>
         </button>
-        <strong>EduLive Pro</strong>
+        <div class="mobile-section-copy">
+          <strong>{{ sectionMeta.title }}</strong>
+          <small>{{ sectionMeta.description }}</small>
+        </div>
         <div class="top-control-actions mobile-control-actions">
           <div class="lang-picker top-lang-picker">
             <button class="lang-toggle simple-lang-toggle compact-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
@@ -234,6 +275,10 @@ watch(student, () => {
       </header>
 
       <header v-if="showSidebar" class="desktop-top-controls">
+        <div class="desktop-section-context">
+          <strong>{{ sectionMeta.title }}</strong>
+          <small>{{ sectionMeta.description }}</small>
+        </div>
         <div class="top-control-actions">
           <div class="lang-picker top-lang-picker">
             <button class="lang-toggle simple-lang-toggle compact-lang-toggle" type="button" @click="langMenuOpen = !langMenuOpen">
@@ -255,7 +300,11 @@ watch(student, () => {
           <strong>{{ t('liveOn') }}</strong>
           <RouterLink class="btn btn-sm" :to="`/room/${activeLive.room_code}`">{{ t('joinLive') }}</RouterLink>
         </div>
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <Transition name="route-fade" mode="out-in">
+            <component :is="Component" :key="route.name" />
+          </Transition>
+        </RouterView>
       </div>
     </main>
   </div>

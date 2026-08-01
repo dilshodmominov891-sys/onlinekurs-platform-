@@ -1,21 +1,20 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { api } from '../lib'
 
-const router = useRouter()
 const teachers = ref([])
 const message = ref('')
 const error = ref('')
 const form = reactive({ full_name: '', username: '', password: '' })
 
 async function load(){
+  error.value = ''
   try{
-    const session = await api.get('/admin/session')
-    if(!session.data.is_admin){ router.replace('/auth'); return }
     const { data } = await api.get('/admin/teachers')
     teachers.value = data.teachers || []
-  }catch{ router.replace('/auth') }
+  }catch(err){
+    error.value = err.response?.data?.error || 'Ustozlar ro‘yxati yuklanmadi.'
+  }
 }
 async function createTeacher(){
   message.value=''; error.value=''
